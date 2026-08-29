@@ -2,14 +2,20 @@ import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { unsafeHTML } from 'lit/directives/unsafe-html.js'
 import type { PropertyValues } from 'lit'
-import { APP_VERSION } from '../app-version.js'
 import { I18nElement } from '../i18n.js'
-import { renderMarkdown } from '../markdown.js'
+import { extractSections, renderMarkdown } from '../markdown.js'
 import { formStyles } from '../shared-styles.js'
+
+interface DocSection {
+  id: string
+  title: string
+}
 
 @customElement('tdc-docs-panel')
 export class DocsPanel extends I18nElement {
   @state() private content = ''
+  @state() private sections: DocSection[] = []
+  @state() private activeSection = ''
   @state() private loadError = false
 
   private controller: AbortController | null = null
@@ -19,18 +25,30 @@ export class DocsPanel extends I18nElement {
     const controller = new AbortController()
     this.controller = controller
     try {
-      const response = await fetch(`docs/${locale}.md`, { signal: controller.signal })
+      const isProd = import.meta.env.PROD
+      const response = await fetch(`docs/${locale}.${isProd ? 'html' : 'md'}`, {
+        signal: controller.signal,
+      })
       if (!response.ok) throw new Error(String(response.status))
       const text = await response.text()
       if (controller.signal.aborted) return
-      this.content = renderMarkdown(text)
+      const html = isProd ? text : renderMarkdown(text)
+      this.content = html
+      this.sections = extractSections(html)
       this.loadError = false
-    } catch {
-      if (!controller.signal.aborted) {
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
         this.content = ''
+        this.sections = []
         this.loadError = true
       }
     }
+  }
+
+  private jumpTo(id: string) {
+    this.activeSection = id
+    const el = this.shadowRoot?.getElementById(id)
+    el?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
   }
 
   override connectedCallback() {
@@ -53,12 +71,34 @@ export class DocsPanel extends I18nElement {
   render() {
     return html`
       <section class="panel">
-        <div class="docs-head">
-          <h2 class="panel-title">${this.t('app.tabs.docs.label')}</h2>
-          <span class="docs-version">${this.t('docs.versionLabel')} ${APP_VERSION}</span>
-        </div>
+        <h2 class="panel-title">${this.t('app.tabs.docs.label')}</h2>
         ${this.content
-          ? html`<div class="docs-body">${unsafeHTML(this.content)}</div>`
+          ? html`
+              ${this.sections.length > 0
+                ? html`
+                    <details class="docs-nav">
+                      <summary>${this.t('docs.navLabel')}</summary>
+                      <nav>
+                        ${this.sections.map(
+                          section => html`
+                            <a
+                              href="#${section.id}"
+                              class=${section.id === this.activeSection ? 'active' : ''}
+                              @click=${(event: Event) => {
+                                event.preventDefault()
+                                this.jumpTo(section.id)
+                              }}
+                            >
+                              ${section.title}
+                            </a>
+                          `,
+                        )}
+                      </nav>
+                    </details>
+                  `
+                : ''}
+              <div class="docs-body">${unsafeHTML(this.content)}</div>
+            `
           : this.loadError
             ? html`<p class="hint">${this.t('docs.loadError')}</p>`
             : html`<p class="hint">${this.t('docs.loading')}</p>`}
@@ -73,32 +113,55 @@ export class DocsPanel extends I18nElement {
         display: block;
       }
 
-      .docs-head {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 12px;
+      .docs-nav {
+        margin-top: 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel-2);
       }
 
-      .docs-version {
-        flex-shrink: 0;
-        font-family: var(--mono);
-        font-size: 12px;
+      .docs-nav summary {
+        cursor: pointer;
+        user-select: none;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+
+      .docs-nav nav {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        padding: 4px 8px 8px;
+      }
+
+      .docs-nav a {
+        padding: 5px 8px;
+        font-size: 13.5px;
+        line-height: 1.4;
+        color: var(--text-dim);
+        border-radius: 6px;
+        text-decoration: none;
+      }
+
+      .docs-nav a:hover,
+      .docs-nav a.active {
         color: var(--accent);
         background: var(--accent-dim);
-        border: 1px solid var(--accent-border);
-        border-radius: 999px;
-        padding: 3px 12px;
       }
 
       .docs-body {
-        margin-top: 6px;
+        margin-top: 16px;
       }
 
       .docs-body h2 {
         margin: 26px 0 8px;
         font-size: 18px;
         color: var(--text);
+        scroll-margin-top: 12px;
       }
 
       .docs-body h2:first-child {

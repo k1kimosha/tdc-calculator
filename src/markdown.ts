@@ -20,6 +20,7 @@ export function renderMarkdown(md: string): string {
   const lines = md.split(/\r?\n/)
   const out: string[] = []
   let i = 0
+  let headingId = 0
 
   function flushList() {
     const items: string[] = []
@@ -63,7 +64,7 @@ export function renderMarkdown(md: string): string {
     const heading = line.match(/^(#{1,4})\s+(.*)$/)
     if (heading) {
       const level = heading[1].length
-      out.push(`<h${level}>${renderInline(heading[2])}</h${level}>`)
+      out.push(`<h${level} id="sec-${++headingId}">${renderInline(heading[2])}</h${level}>`)
       i++
       continue
     }
@@ -89,4 +90,18 @@ export function renderMarkdown(md: string): string {
   }
 
   return out.join('\n')
+}
+
+export function stripTags(html: string): string {
+  return html.replace(/<[^>]+>/g, '')
+}
+
+export function extractSections(html: string): { id: string; title: string }[] {
+  const out: { id: string; title: string }[] = []
+  const re = /<h2 id="([^"]+)">([\s\S]*?)<\/h2>/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html))) {
+    out.push({ id: m[1], title: stripTags(m[2]).trim() })
+  }
+  return out
 }

@@ -23,10 +23,7 @@ h * k / r
 `
 
 function stubFetch(text: string) {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({ ok: true, text: async () => text }),
-  )
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => text }))
 }
 
 async function mount() {
@@ -49,7 +46,7 @@ afterEach(() => {
 })
 
 describe('docs panel (markdown)', () => {
-  it('renders markdown headings, formulas and version badge', async () => {
+  it('renders markdown headings, formulas and navigation', async () => {
     const el = await mount()
 
     const headings = [...el.shadowRoot!.querySelectorAll<HTMLElement>('.docs-body h2')].map(h =>
@@ -63,8 +60,15 @@ describe('docs panel (markdown)', () => {
     const code = el.shadowRoot!.querySelector('pre code')
     expect(code?.textContent!.trim()).toBe('h * k / r')
 
-    const version = el.shadowRoot!.querySelector('.docs-version')
-    expect(version?.textContent).toContain('dev')
+    const nav = el.shadowRoot!.querySelector('.docs-nav summary')
+    expect(nav?.textContent!.trim()).toBe('Содержание')
+
+    const links = [...el.shadowRoot!.querySelectorAll<HTMLElement>('.docs-nav a')]
+    expect(links.map(a => a.textContent!.trim())).toEqual([
+      'How to use the calculator',
+      'Math basics',
+    ])
+    expect(links.every(a => (a.getAttribute('href') ?? '').startsWith('#sec-'))).toBe(true)
   })
 
   it('reloads localized markdown when the language changes', async () => {

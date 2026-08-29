@@ -119,3 +119,15 @@ d/(vs*c)
 4. **Extra recommendations** — notes on TDC work and identification.
 5. **Editable calculators** — formulas of all four calculators with live syntax checks and a variable list.
 6. **Export/import** — “Export JSON” and “Import JSON” save the whole catalog (including formulas) to a file; “Reset data” restores factory values.
+
+## Version history
+
+### 1.1
+
+- Documentation moved to **Markdown**: sources are `public/docs/ru.md` and `public/docs/en.md`.
+- On the production build the sections are compiled into ready HTML (`docs/ru.html`, `docs/en.html`) — the page opens instantly even on weak devices, with no Markdown parsing in the browser.
+- Added the **Contents** navigation above the text: expand the list and click a section to jump to it.
+
+### 1.0
+
+- First version of the documentation: step-by-step calculator usage, formula syntax, math basics, working with the reference (the "Documentation" tab, introduced in 0.1.1).

@@ -326,7 +326,7 @@ export const en: Messages = {
     invalid: 'Formula error: {error}',
   },
   docs: {
-    versionLabel: 'Documentation · version',
+    navLabel: 'Contents',
     loading: 'Loading documentation…',
     loadError: 'Failed to load the documentation.',
   },
