@@ -3,7 +3,6 @@ import { customElement, state } from 'lit/decorators.js'
 import {
   CHEAT_SHEET_RIZKI,
   MAGNIFICATIONS,
-  WARSHIPS,
   distanceMeters,
   formatNumber,
   rizkiForDistance,
@@ -11,6 +10,7 @@ import {
   type Magnification,
   type ShipClass,
 } from '../tdc-data.js'
+import { getShips } from '../tdc-store.js'
 import { I18nElement } from '../i18n.js'
 import { formStyles, segmentStyles, tableStyles } from '../shared-styles.js'
 
@@ -32,7 +32,7 @@ export class DistancePanel extends I18nElement {
   @state() private distText = ''
 
   private get selectedShip(): ShipClass | undefined {
-    return WARSHIPS.find(s => s.id === this.shipId)
+    return getShips().find(s => s.id === this.shipId)
   }
 
   private get magnification(): Magnification {
@@ -42,7 +42,7 @@ export class DistancePanel extends I18nElement {
   private _onShipChange(e: Event) {
     const id = (e.target as HTMLSelectElement).value
     this.shipId = id
-    const ship = WARSHIPS.find(s => s.id === id)
+    const ship = getShips().find(s => s.id === id)
     if (ship) {
       this.heightText = String(
         this.landmark === 'mast' ? ship.mastHeight : ship.funnelHeight,
@@ -105,7 +105,7 @@ export class DistancePanel extends I18nElement {
             <label class="field-label" for="ship">${this.t('distance.ship.label')}</label>
             <select id="ship" @change=${this._onShipChange}>
               <option value="" ?selected=${this.shipId === ''}>${this.t('distance.ship.manual')}</option>
-              ${WARSHIPS.map(
+              ${getShips().map(
                 s => html`
                   <option value=${s.id} ?selected=${this.shipId === s.id}>${shipClassName(s, locale)}</option>
                 `,

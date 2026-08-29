@@ -1,6 +1,7 @@
 import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { WARSHIPS, formatNumber, shipClassName, speedKnots, type ShipClass } from '../tdc-data.js'
+import { formatNumber, shipClassName, speedKnots, type ShipClass } from '../tdc-data.js'
+import { getShips } from '../tdc-store.js'
 import { I18nElement } from '../i18n.js'
 import { formStyles } from '../shared-styles.js'
 
@@ -18,7 +19,7 @@ export class SpeedPanel extends I18nElement {
   @state() private secondsText = '40'
 
   private get selectedShip(): ShipClass | undefined {
-    return WARSHIPS.find(s => s.id === this.shipId)
+    return getShips().find(s => s.id === this.shipId)
   }
 
   private _onShipChange(e: Event) {
@@ -51,7 +52,7 @@ export class SpeedPanel extends I18nElement {
             <label class="field-label" for="ship">${this.t('speed.ship.label')}</label>
             <select id="ship" @change=${this._onShipChange}>
               <option value="" ?selected=${this.shipId === ''}>${this.t('speed.ship.manual')}</option>
-              ${WARSHIPS.map(
+              ${getShips().map(
                 s => html`
                   <option value=${s.id} ?selected=${this.shipId === s.id}>${shipClassName(s, locale)}</option>
                 `,

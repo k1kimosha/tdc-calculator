@@ -1,7 +1,6 @@
 import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import {
-  WARSHIPS,
   aobFromVisibleLength,
   formatNumber,
   rizkiFromVisibleMeters,
@@ -10,6 +9,7 @@ import {
   visibleMetersFromRizki,
   type ShipClass,
 } from '../tdc-data.js'
+import { getShips } from '../tdc-store.js'
 import { I18nElement } from '../i18n.js'
 import { formStyles, segmentStyles, tableStyles } from '../shared-styles.js'
 
@@ -33,7 +33,7 @@ export class AobPanel extends I18nElement {
   @state() private aobText = ''
 
   private get selectedShip(): ShipClass | undefined {
-    return WARSHIPS.find(s => s.id === this.shipId)
+    return getShips().find(s => s.id === this.shipId)
   }
 
   private _onShipChange(e: Event) {
@@ -107,7 +107,7 @@ export class AobPanel extends I18nElement {
             <label class="field-label" for="ship">${this.t('aob.ship.label')}</label>
             <select id="ship" @change=${this._onShipChange}>
               <option value="" ?selected=${this.shipId === ''}>${this.t('aob.ship.manual')}</option>
-              ${WARSHIPS.map(
+              ${getShips().map(
                 s => html`
                   <option value=${s.id} ?selected=${this.shipId === s.id}>${shipClassName(s, locale)}</option>
                 `,
