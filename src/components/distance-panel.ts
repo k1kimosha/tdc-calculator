@@ -3,14 +3,13 @@ import { customElement, state } from 'lit/decorators.js'
 import {
   CHEAT_SHEET_RIZKI,
   MAGNIFICATIONS,
-  distanceMeters,
   formatNumber,
-  rizkiForDistance,
   shipClassName,
   type Magnification,
   type ShipClass,
 } from '../tdc-data.js'
-import { getShips } from '../tdc-store.js'
+import { compileFormulas, evaluateOrNull } from '../formula-engine.js'
+import { getFormulas, getShips } from '../tdc-store.js'
 import { I18nElement } from '../i18n.js'
 import { formStyles, segmentStyles, tableStyles } from '../shared-styles.js'
 
@@ -71,28 +70,40 @@ export class DistancePanel extends I18nElement {
     const dist = toNumber(this.distText)
     const { locale } = this
 
-    const resultDistance = h > 0 && rizki > 0 ? distanceMeters(h, c, rizki) : null
-    const resultRizki = h > 0 && dist > 0 ? rizkiForDistance(h, c, dist) : null
+    const formulas = getFormulas('distance')
+    const compiled = compileFormulas({
+      dist: formulas['dist'] ?? 'h*k/r',
+      rizki: formulas['rizki'] ?? 'h*k/d',
+    })
+    const distFn = compiled.fns['dist']
+    const rizkiFn = compiled.fns['rizki']
+
+    const resultDistance = h > 0 && rizki > 0 ? evaluateOrNull(distFn, { h, k: c, r: rizki, d: dist }) : null
+    const resultRizki = h > 0 && dist > 0 ? evaluateOrNull(rizkiFn, { h, k: c, r: 0, d: dist }) : null
+
+    const formulaError = compiled.error ? this.t('calcs.invalid', { error: compiled.error }) : null
 
     const distFormula =
-      resultDistance !== null
+      formulaError ??
+      (resultDistance !== null
         ? this.t('distance.formula.byTicks', {
             h: formatNumber(h, 2, locale),
             k: formatNumber(c, 2, locale),
             r: formatNumber(rizki, 2, locale),
             d: formatNumber(resultDistance, 0, locale),
           })
-        : this.t('distance.formula.emptyTicks')
+        : this.t('distance.formula.emptyTicks'))
 
     const rizkiFormula =
-      resultRizki !== null
+      formulaError ??
+      (resultRizki !== null
         ? this.t('distance.formula.byDistance', {
             h: formatNumber(h, 2, locale),
             k: formatNumber(c, 2, locale),
             d: formatNumber(dist, 0, locale),
             r: formatNumber(resultRizki, 2, locale),
           })
-        : this.t('distance.formula.emptyDist')
+        : this.t('distance.formula.emptyDist'))
 
     const unitM = this.t('units.meterShort')
 
@@ -240,7 +251,7 @@ export class DistancePanel extends I18nElement {
             </thead>
             <tbody>
               ${CHEAT_SHEET_RIZKI.map(r => {
-                const d = h > 0 ? distanceMeters(h, c, r) : null
+                const d = h > 0 ? evaluateOrNull(distFn, { h, k: c, r, d: 0 }) : null
                 const isActive = isRizkiMode
                   ? rizki > 0 && Math.abs(r - rizki) < 0.005
                   : resultRizki !== null && Math.abs(r - resultRizki) < 0.005

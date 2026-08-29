@@ -285,5 +285,43 @@ export const en: Messages = {
     ident: {
       title: 'Ship identification',
     },
+    calcs: {
+      title: 'Editable calculators',
+      hint: 'Formulas power the four calculators (Range, Speed, AOB, Dick O\'Kane method), are stored together with the reference and exported in the same JSON.',
+      edit: 'Edit',
+      done: 'Done',
+      syntaxTitle: 'Formula syntax',
+      syntaxBody:
+        'Supported: + − * / % ^ operators, ( ) brackets and functions sin, cos, tan, asin, acos, atan, atan2, sinh, cosh, tanh, sqrt, cbrt, abs, min, max, floor, ceil, round, trunc, sign, ln, log, log2, exp, clamp(x, low, high), rad, deg. Constants: pi, e, tau. Variable and function names are case-insensitive.',
+      varsTitle: 'Variables',
+      invalid: 'Invalid expression: {error}',
+      saved: 'Formulas saved.',
+      vars: {
+        distance: 'h — target height; k — coefficient; r — ticks; d — range, m',
+        speed: 'l — length, m; t — transit time, s; spd — speed, kn',
+        aob: 'r — ticks; d — range, m; l — true length, m; v — visible length, m; a — AOB, deg',
+        okane:
+          'vt — target speed, kn; vs — torpedo speed, kn; d — range, m; aob — target AOB, deg; lead — lead angle, deg; c — knots to m/s',
+      },
+      formula: {
+        distance: { dist: 'Range from ticks', rizki: 'Ticks from range' },
+        speed: { speed: 'Target speed', transit: 'Transit time' },
+        aob: {
+          visRizki: 'Visible length from ticks',
+          aob: 'AOB from visible length',
+          visAob: 'Visible length from AOB',
+          rizki: 'Ticks from visible length',
+        },
+        okane: {
+          lead: 'Lead angle',
+          leadGen: 'Lead, general case',
+          trackAngle: 'Track angle',
+          runTime: 'Torpedo run time',
+        },
+      },
+    },
+  },
+  calcs: {
+    invalid: 'Formula error: {error}',
   },
 }

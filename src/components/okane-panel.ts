@@ -1,13 +1,8 @@
 import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import {
-  TORPEDO_SPEEDS,
-  formatNumber,
-  leadDeg,
-  okaneLeadDeg,
-  torpedoRunSeconds,
-  trackAngleDeg,
-} from '../tdc-data.js'
+import { KNOTS_TO_MS, TORPEDO_SPEEDS, formatNumber } from '../tdc-data.js'
+import { compileFormulas, evaluateOrNull } from '../formula-engine.js'
+import { getFormulas } from '../tdc-store.js'
 import { I18nElement } from '../i18n.js'
 import { formStyles } from '../shared-styles.js'
 
@@ -51,13 +46,33 @@ export class OkanePanel extends I18nElement {
     const aob = toNumber(this.aobText)
     const { locale } = this
 
-    const beta = vs > 0 ? okaneLeadDeg(vt, vs) : null
+    const formulas = getFormulas('okane')
+    const compiled = compileFormulas({
+      lead: formulas['lead'] ?? 'atan(vt/vs)*180/pi',
+      leadGen: formulas['leadGen'] ?? 'asin(vt/vs*sin(aob*pi/180))*180/pi',
+      trackAngle: formulas['trackAngle'] ?? '180-aob-lead',
+      runTime: formulas['runTime'] ?? 'd/(vs*c)',
+    })
+    const leadFn = compiled.fns['lead']
+    const leadGenFn = compiled.fns['leadGen']
+    const trackFn = compiled.fns['trackAngle']
+    const runFn = compiled.fns['runTime']
+
+    const beta = vs > 0 ? evaluateOrNull(leadFn, { vt, vs, aob, d: D, lead: 0, c: KNOTS_TO_MS }) : null
     const aobFire = beta !== null ? 90 - beta : null
 
-    const generalLead = vs > 0 && aob > 0 ? leadDeg(vt, vs, aob) : null
-    const tta = generalLead !== null ? trackAngleDeg(aob, generalLead) : null
+    const generalLead =
+      vs > 0 && aob > 0
+        ? evaluateOrNull(leadGenFn, { vt, vs, aob, d: D, lead: 0, c: KNOTS_TO_MS })
+        : null
+    const tta =
+      generalLead !== null
+        ? evaluateOrNull(trackFn, { aob, lead: generalLead, vt, vs, d: D, c: KNOTS_TO_MS })
+        : null
 
-    const runTime = D > 0 && vs > 0 ? torpedoRunSeconds(D, vs) : null
+    const runTime =
+      D > 0 && vs > 0 ? evaluateOrNull(runFn, { d: D, vs, c: KNOTS_TO_MS, vt, aob, lead: 0 }) : null
+    const formulaError = compiled.error ? this.t('calcs.invalid', { error: compiled.error }) : null
 
     return html`
       <section class="panel">
@@ -122,13 +137,14 @@ export class OkanePanel extends I18nElement {
           <div class="result-caption">${this.t('okane.result.caption')}</div>
           <div class="result-value">${beta !== null ? `${formatNumber(beta, 1, locale)}°` : '—'}</div>
           <div class="result-formula">
-            ${beta !== null
+            ${formulaError ??
+            (beta !== null
               ? this.t('okane.result.formula', {
                   vt: formatNumber(vt, 2, locale),
                   vs: formatNumber(vs, 2, locale),
                   b: formatNumber(beta, 1, locale),
                 })
-              : this.t('okane.result.empty')}
+              : this.t('okane.result.empty'))}
           </div>
         </div>
       </section>
@@ -157,13 +173,14 @@ export class OkanePanel extends I18nElement {
           <div class="result-caption">${this.t('okane.general.caption')}</div>
           <div class="result-value">${generalLead !== null ? `${formatNumber(generalLead, 1, locale)}°` : '—'}</div>
           <div class="result-formula">
-            ${generalLead !== null && tta !== null
+            ${formulaError ??
+            (generalLead !== null && tta !== null
               ? this.t('okane.general.formula', {
                   b: formatNumber(generalLead, 1, locale),
                   a: formatNumber(aob, 1, locale),
                   tta: formatNumber(tta, 1, locale),
                 })
-              : this.t('okane.general.empty')}
+              : this.t('okane.general.empty'))}
           </div>
         </div>
       </section>
@@ -190,13 +207,14 @@ export class OkanePanel extends I18nElement {
           <div class="result-caption">${this.t('okane.run.caption')}</div>
           <div class="result-value">${runTime !== null ? formatRunTime(runTime, (k, p) => this.t(k, p)) : '—'}</div>
           <div class="result-formula">
-            ${runTime !== null
+            ${formulaError ??
+            (runTime !== null
               ? this.t('okane.run.formula', {
                   d: formatNumber(D, 0, locale),
                   vs: formatNumber(vs, 2, locale),
                   t: formatNumber(runTime, 0, locale),
                 })
-              : this.t('okane.run.empty')}
+              : this.t('okane.run.empty'))}
           </div>
         </div>
       </section>

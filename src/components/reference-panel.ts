@@ -1,20 +1,26 @@
 import { css, html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import {
+  CALC_IDS,
   IDENTIFICATION_INTRO,
   IDENTIFICATION_METHODS,
+  defaultFormulasFor,
   locText,
   shipClassName,
+  type CalculatorConfig,
+  type CalculatorId,
   type Scenario,
   type ScenarioMode,
   type ShipClass,
 } from '../tdc-data.js'
+import { validateFormula } from '../formula-engine.js'
 import { I18nElement } from '../i18n.js'
 import { formStyles, segmentStyles, tableStyles } from '../shared-styles.js'
 import {
   NOTE_CATEGORIES,
   catalogFileName,
   exportCatalogJson,
+  getCalcs,
   getNotes,
   getScenarios,
   getShips,
@@ -25,6 +31,7 @@ import {
   removeShip,
   resetCatalog,
   subscribeCatalog,
+  upsertCalculator,
   upsertNote,
   upsertScenario,
   upsertShip,
@@ -35,6 +42,7 @@ type EditingState =
   | { kind: 'ship'; draft: ShipClass }
   | { kind: 'scenario'; draft: Scenario }
   | { kind: 'note'; draft: Note }
+  | { kind: 'calc'; draft: CalculatorConfig }
   | null
 
 type ScenarioModeKey = 'surface' | 'submerged'
@@ -230,6 +238,28 @@ export class ReferencePanel extends I18nElement {
 
   private _onMode(sc: Scenario, value: ScenarioModeKey) {
     this.modeOf = { ...this.modeOf, [sc.id]: value }
+  }
+
+  private _openCalc(id: CalculatorId) {
+    const existing = getCalcs().find(c => c.id === id)
+    const draft = existing
+      ? (JSON.parse(JSON.stringify(existing)) as CalculatorConfig)
+      : { id, formulas: defaultFormulasFor(id) }
+    this.editing = { kind: 'calc', draft }
+  }
+
+  private _calcExpr(index: number, value: string) {
+    if (!this.editing || this.editing.kind !== 'calc') return
+    const draft = this.editing.draft
+    draft.formulas = draft.formulas.map((f, i) => (i === index ? { ...f, expr: value } : f))
+    this.editing = { kind: 'calc', draft }
+  }
+
+  private _saveCalc() {
+    if (!this.editing || this.editing.kind !== 'calc') return
+    upsertCalculator(this.editing.draft)
+    this.editing = null
+    this._showToast(this.t('reference.calcs.saved'))
   }
 
   private _onExport() {
@@ -674,6 +704,96 @@ export class ReferencePanel extends I18nElement {
     `
   }
 
+  private renderCalcs() {
+    const calcs = getCalcs()
+    return html`
+      <section class="panel">
+        <div class="section-head">
+          <h2 class="panel-title">${this.t('reference.calcs.title')}</h2>
+        </div>
+        <p class="hint">${this.t('reference.calcs.hint')}</p>
+        <div class="calc-grid">
+          ${CALC_IDS.map(
+            id => html`
+              <div class="calc-card">
+                <div class="scenario-head">
+                  <h3 class="scenario-title">${this.t(`app.tabs.${id}.label`)}</h3>
+                  <div class="row-actions">
+                    <button
+                      type="button"
+                      class="btn"
+                      ?disabled=${this.editing?.kind === 'calc' && this.editing.draft.id === id}
+                      @click=${() => this._openCalc(id)}
+                    >
+                      ${this.t('reference.calcs.edit')}
+                    </button>
+                  </div>
+                </div>
+                <div class="calc-formulas">
+                  ${(calcs.find(c => c.id === id)?.formulas ?? []).map(
+                    f => html`
+                      <div class="calc-formula">
+                        <span class="calc-label">${this.t(`reference.calcs.formula.${id}.${f.id}`)}</span>
+                        <code class="calc-expr">${f.expr}</code>
+                      </div>
+                    `,
+                  )}
+                </div>
+                <p class="calc-vars">
+                  <b>${this.t('reference.calcs.varsTitle')}:</b> ${this.t(`reference.calcs.vars.${id}`)}
+                </p>
+              </div>
+            `,
+          )}
+        </div>
+        ${this.editing?.kind === 'calc' ? this.renderCalcForm() : nothing}
+      </section>
+    `
+  }
+
+  private renderCalcForm() {
+    const d = (this.editing as { kind: 'calc'; draft: CalculatorConfig }).draft
+    const id = d.id
+    return html`
+      <div class="editor">
+        <h3>${this.t(`app.tabs.${id}.label`)}</h3>
+        <div class="form-grid">
+          ${d.formulas.map((f, i) => {
+            const err = validateFormula(f.expr)
+            return html`
+              <div class="field field-wide">
+                <label class="field-label">${this.t(`reference.calcs.formula.${id}.${f.id}`)}</label>
+                <input
+                  type="text"
+                  class="mono-input"
+                  spellcheck="false"
+                  .value=${f.expr}
+                  @input=${(e: Event) => this._calcExpr(i, (e.target as HTMLInputElement).value)}
+                />
+                ${err ? html`<span class="calc-error">${this.t('reference.calcs.invalid', { error: err })}</span>` : nothing}
+              </div>
+            `
+          })}
+        </div>
+        <div class="calc-help">
+          <h4>${this.t('reference.calcs.syntaxTitle')}</h4>
+          <p>${this.t('reference.calcs.syntaxBody')}</p>
+        </div>
+        <p class="calc-vars">
+          <b>${this.t('reference.calcs.varsTitle')}:</b> ${this.t(`reference.calcs.vars.${id}`)}
+        </p>
+        <div class="form-actions">
+          <button type="button" class="btn btn-accent" @click=${this._saveCalc}>
+            ${this.t('reference.save')}
+          </button>
+          <button type="button" class="btn" @click=${() => (this.editing = null)}>
+            ${this.t('reference.cancel')}
+          </button>
+        </div>
+      </div>
+    `
+  }
+
   private renderIdent() {
     return html`
       <section class="panel">
@@ -722,6 +842,7 @@ export class ReferencePanel extends I18nElement {
       ${this.renderShips()}
       ${this.renderScenarios()}
       ${this.renderNotes()}
+      ${this.renderCalcs()}
       ${this.renderIdent()}
     `
   }
@@ -1169,6 +1290,91 @@ export class ReferencePanel extends I18nElement {
         margin: 12px 0 0;
         font-size: 13px;
         color: var(--text-dim);
+      }
+
+      .calc-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .calc-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--panel);
+        padding: 14px;
+      }
+
+      .calc-formulas {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .calc-formula {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 13px;
+      }
+
+      .calc-label {
+        color: var(--text-dim);
+      }
+
+      .calc-expr {
+        font-family: var(--mono);
+        color: var(--accent);
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 2px 7px;
+        white-space: nowrap;
+      }
+
+      .calc-vars {
+        margin: 12px 0 0;
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--text-dim);
+      }
+
+      .calc-vars b {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .calc-error {
+        margin-top: 4px;
+        font-size: 11.5px;
+        color: #ff7a7a;
+      }
+
+      .mono-input {
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+
+      .calc-help {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border: 1px dashed var(--accent-border);
+        border-radius: 8px;
+        background: var(--accent-dim);
+        font-size: 12.5px;
+        line-height: 1.55;
+        color: var(--text-dim);
+      }
+
+      .calc-help h4 {
+        margin: 0 0 4px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--accent);
       }
 
       @media (max-width: 640px) {
