@@ -9,9 +9,10 @@ export interface ShipClass {
   funnelHeight: number
   draft: number
   speed: number
+  deckGun: boolean
 }
 
-export const WARSHIPS: ShipClass[] = [
+export const DEFAULT_SHIPS: ShipClass[] = [
   {
     id: 'flavik',
     nameRu: 'Корвет класса «Флавик»',
@@ -21,6 +22,7 @@ export const WARSHIPS: ShipClass[] = [
     funnelHeight: 12,
     draft: 4,
     speed: 16,
+    deckGun: true,
   },
   {
     id: 'bittern',
@@ -31,6 +33,7 @@ export const WARSHIPS: ShipClass[] = [
     funnelHeight: 10,
     draft: 3,
     speed: 19,
+    deckGun: true,
   },
   {
     id: 'tribal',
@@ -41,11 +44,20 @@ export const WARSHIPS: ShipClass[] = [
     funnelHeight: 14,
     draft: 3,
     speed: 36,
+    deckGun: true,
   },
 ]
 
 export function shipClassName(ship: ShipClass, locale: Locale): string {
-  return locale === 'ru' ? ship.nameRu : ship.nameEn
+  return locale === 'ru'
+    ? ship.nameRu || ship.nameEn
+    : ship.nameEn || ship.nameRu
+}
+
+export function locText(record: Record<string, string>, locale: Locale): string {
+  const own = record[locale]
+  if (own) return own
+  return locale === 'ru' ? record.en ?? '' : record.ru ?? ''
 }
 
 export interface Magnification {
@@ -96,9 +108,7 @@ export interface ScenarioRow {
   value: string
 }
 
-export interface Scenario {
-  id: string
-  title: Record<Locale, string>
+export interface ScenarioMode {
   recommendation: Record<Locale, string>
   detection: Record<Locale, string>
   leftCaption: Record<Locale, string>
@@ -106,35 +116,70 @@ export interface Scenario {
   rows: ScenarioRow[]
 }
 
-export const SAFE_SCENARIOS: Scenario[] = [
+export interface Scenario {
+  id: string
+  title: Record<Locale, string>
+  surface: ScenarioMode
+  submerged: ScenarioMode
+}
+
+export const DEFAULT_SCENARIOS: Scenario[] = [
   {
     id: 'day',
     title: { ru: 'День, безоблачно, без тумана', en: 'Day, clear sky, no fog' },
-    recommendation: { ru: '6000–6500 м', en: '6000–6500 m' },
-    detection: { ru: '5000–5500 м', en: '5000–5500 m' },
-    leftCaption: { ru: 'Корабль', en: 'Ship' },
-    rightCaption: { ru: 'Риски (по трубе)', en: 'Ticks (funnel)' },
-    rows: [
-      { label: { ru: 'Флавик', en: 'Flower' }, value: '0,6–0,7' },
-      { label: { ru: 'Биттерн', en: 'Bittern' }, value: '0,5–0,6' },
-      { label: { ru: 'Трайбл', en: 'Tribal' }, value: '0,7–0,8' },
-    ],
+    surface: {
+      recommendation: { ru: '6000–6500 м', en: '6000–6500 m' },
+      detection: { ru: '5000–5500 м', en: '5000–5500 m' },
+      leftCaption: { ru: 'Корабль', en: 'Ship' },
+      rightCaption: { ru: 'Риски (по трубе)', en: 'Ticks (funnel)' },
+      rows: [
+        { label: { ru: 'Флавик', en: 'Flower' }, value: '0,6–0,7' },
+        { label: { ru: 'Биттерн', en: 'Bittern' }, value: '0,5–0,6' },
+        { label: { ru: 'Трайбл', en: 'Tribal' }, value: '0,7–0,8' },
+      ],
+    },
+    submerged: {
+      recommendation: { ru: '2500–3000 м', en: '2500–3000 m' },
+      detection: { ru: '1800–2200 м', en: '1800–2200 m' },
+      leftCaption: { ru: 'Корабль', en: 'Ship' },
+      rightCaption: { ru: 'Риски (по трубе)', en: 'Ticks (funnel)' },
+      rows: [
+        { label: { ru: 'Флавик', en: 'Flower' }, value: '0,3–0,4' },
+        { label: { ru: 'Биттерн', en: 'Bittern' }, value: '0,3' },
+        { label: { ru: 'Трайбл', en: 'Tribal' }, value: '0,4' },
+      ],
+    },
   },
   {
     id: 'night',
     title: { ru: 'Ночь, без луны, без тумана', en: 'Night, no moon, no fog' },
-    recommendation: { ru: '3000–3500 м', en: '3000–3500 m' },
-    detection: { ru: '2000–2500 м', en: '2000–2500 m' },
-    leftCaption: { ru: 'Риски (по мачте, Флавик)', en: 'Ticks (mast, Flower)' },
-    rightCaption: { ru: 'Дистанция, м', en: 'Range, m' },
-    rows: [
-      { label: { ru: '2', en: '2' }, value: '3600' },
-      { label: { ru: '3', en: '3' }, value: '2400' },
-      { label: { ru: '4', en: '4' }, value: '1800' },
-      { label: { ru: '5', en: '5' }, value: '1400' },
-      { label: { ru: '6', en: '6' }, value: '1200' },
-      { label: { ru: '7', en: '7' }, value: '1000' },
-    ],
+    surface: {
+      recommendation: { ru: '3000–3500 м', en: '3000–3500 m' },
+      detection: { ru: '2000–2500 м', en: '2000–2500 m' },
+      leftCaption: { ru: 'Риски (по мачте, Флавик)', en: 'Ticks (mast, Flower)' },
+      rightCaption: { ru: 'Дистанция, м', en: 'Range, m' },
+      rows: [
+        { label: { ru: '2', en: '2' }, value: '3600' },
+        { label: { ru: '3', en: '3' }, value: '2400' },
+        { label: { ru: '4', en: '4' }, value: '1800' },
+        { label: { ru: '5', en: '5' }, value: '1400' },
+        { label: { ru: '6', en: '6' }, value: '1200' },
+        { label: { ru: '7', en: '7' }, value: '1000' },
+      ],
+    },
+    submerged: {
+      recommendation: { ru: '1200–1600 м', en: '1200–1600 m' },
+      detection: { ru: '800–1100 м', en: '800–1100 m' },
+      leftCaption: { ru: 'Риски (по перископу)', en: 'Ticks (periscope)' },
+      rightCaption: { ru: 'Дистанция, м', en: 'Range, m' },
+      rows: [
+        { label: { ru: '2', en: '2' }, value: '1500' },
+        { label: { ru: '3', en: '3' }, value: '1000' },
+        { label: { ru: '4', en: '4' }, value: '800' },
+        { label: { ru: '5', en: '5' }, value: '600' },
+        { label: { ru: '6', en: '6' }, value: '500' },
+      ],
+    },
   },
 ]
 

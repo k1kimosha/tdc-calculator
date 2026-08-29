@@ -16,6 +16,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Добавлены тесты i18n (**Vitest + happy-dom**): автоопределение языка при «загрузке страницы» (включая `html lang`) и фолбэк на английский при неподдерживаемом языке браузера; CI-воркфлоу `.github/workflows/test.yml` запускает сборку и тесты на каждый Pull Request в `master`
 - Удалён мёртвый код из стартового шаблона: `src/my-element.ts`, `src/assets/`, `public/icons.svg`
 - Подключены локальные шрифты **Noto Sans** (Google Fonts): файлы TTF лежат в `public/fonts/`, все 8 граней (400/500/600/700 + курсив) зарегистрированы через `@font-face` в `src/index.css` — шрифт раздаётся файлами из статики, без внешних запросов. Там же лежат китайские и японские грань (JP/SC/TC) про запас, в CSS пока не подключены
+- Справочник стал редактируемым каталогом (хранение в `localStorage`, сервер не нужен): создание/редактирование/удаление классов кораблей (с флагом наличия палубного орудия), сценариев безопасных дистанций с переключателем **Надводное/Подводное** положение и произвольных дополнительных рекомендаций (работа с TDC, идентификация); экспорт/импорт каталога в/из локального JSON-файла, сброс к заводским данным; тесты стора (`src/tdc-store.test.ts`, 21 кейс)
+- Формы каталога работают под актуальный язык страницы: название вводится только на текущем языке, другие языки заполняются после переключения языка — при этом черновик (даже несохранённый) не теряется при смене языка; если язык не локализован, подставляется название на исходном языке
 
 ### Added
 
@@ -23,6 +25,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - i18n tests added (**Vitest + happy-dom**): automatic language detection on page load (including `html lang`) and fallback to English for unsupported browser languages; CI workflow `.github/workflows/test.yml` runs the build and tests on every Pull Request to `master`
 - Starter-template dead code removed: `src/my-element.ts`, `src/assets/`, `public/icons.svg`
 - Local **Noto Sans** (Google Fonts) fonts wired up: TTF files live in `public/fonts/`, all 8 faces (400/500/600/700 + italic variants) are registered via `@font-face` in `src/index.css` — fonts are served as static files with no external requests. Chinese and Japanese faces (JP/SC/TC) are also stored there for the future, not yet wired into CSS
+- Reference became an editable catalog (stored in `localStorage`, no backend needed): create/edit/delete ship classes (with a deck-gun flag), safe-range scenarios with a **Surface/Submerged** toggle, and arbitrary extra recommendations (TDC work, identification); catalog export/import to/from a local JSON file, factory-data reset; store tests (`src/tdc-store.test.ts`, 21 cases)
+- Catalog forms follow the active page language: a name is entered only in the current language, other languages are filled in after switching the page language — the draft (even unsaved) survives a language switch; when a language is not localized, the entry falls back to the source language
 
 ## [0.1.1] — 2026-08-29
 
