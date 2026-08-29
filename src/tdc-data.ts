@@ -48,6 +48,23 @@ export const DEFAULT_SHIPS: ShipClass[] = [
   },
 ]
 
+export interface Submarine {
+  id: string
+  name: LocaleText
+}
+
+export const SUBMARINES: Submarine[] = [
+  { id: 'u96', name: { ru: 'U-96', en: 'U-96' } },
+  { id: 'u564', name: { ru: 'U-564', en: 'U-564' } },
+  { id: 'u552', name: { ru: 'U-552', en: 'U-552' } },
+  { id: 'u307', name: { ru: 'U-307', en: 'U-307' } },
+]
+
+export function submarineName(id: string, locale: Locale): string {
+  const sub = SUBMARINES.find(s => s.id === id)
+  return sub ? sub.name[locale] : id
+}
+
 export function shipClassName(ship: ShipClass, locale: Locale): string {
   return locale === 'ru'
     ? ship.nameRu || ship.nameEn
@@ -446,7 +463,7 @@ export const DEFAULT_CALC_CONFIGS: CalculatorConfig[] = [
     ],
     formulas: [
       { id: 'speed', expr: 'l/t*1.94', label: { ru: 'Скорость цели', en: 'Target speed' }, unit: KNOTS },
-      { id: 'transit', expr: 'l*1.94/spd', label: { ru: 'Время прохода', en: 'Transit time' }, unit: SECONDS },
+      { id: 'transit', expr: 'l*1.94/speed', label: { ru: 'Время прохода', en: 'Transit time' }, unit: SECONDS },
     ],
   },
   {
