@@ -3,6 +3,7 @@ import { customElement, state } from 'lit/decorators.js'
 import './components/calc-panel.js'
 import './components/reference-panel.js'
 import './components/docs-panel.js'
+import './components/tdc-log-panel.js'
 import { I18nElement, LOCALE_OPTIONS, setLocale } from './i18n.js'
 import { locText, type CalculatorConfig } from './tdc-data.js'
 import { getCalcs, subscribeCatalog } from './tdc-store.js'
@@ -28,7 +29,7 @@ export class TdcApp extends I18nElement {
 
   private refresh() {
     this.calcs = getCalcs()
-    if (this.tab !== 'reference' && this.tab !== 'docs') {
+    if (this.tab !== 'reference' && this.tab !== 'docs' && this.tab !== 'log') {
       if (!this.calcs.some(c => c.id === this.tab)) {
         this.tab = this.calcs[0]?.id ?? 'reference'
       }
@@ -208,6 +209,7 @@ export class TdcApp extends I18nElement {
         label: locText(c.title, this.locale) || c.id,
         hint: c.hint ? locText(c.hint, this.locale) : '',
       })),
+      { id: 'log', label: this.t('app.tabs.log.label'), hint: this.t('app.tabs.log.hint') },
       { id: 'reference', label: this.t('app.tabs.reference.label'), hint: this.t('app.tabs.reference.hint') },
       { id: 'docs', label: this.t('app.tabs.docs.label'), hint: this.t('app.tabs.docs.hint') },
     ]
@@ -261,6 +263,7 @@ export class TdcApp extends I18nElement {
         ${active ? html`<tdc-calc-panel .config=${active}></tdc-calc-panel>` : ''}
         ${this.tab === 'reference' ? html`<tdc-reference-panel></tdc-reference-panel>` : ''}
         ${this.tab === 'docs' ? html`<tdc-docs-panel></tdc-docs-panel>` : ''}
+        ${this.tab === 'log' ? html`<tdc-log-panel></tdc-log-panel>` : ''}
       </main>
 
       <footer class="footer">

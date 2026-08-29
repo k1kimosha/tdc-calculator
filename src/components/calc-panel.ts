@@ -9,7 +9,10 @@ import {
   type CalcFormula,
   type CalculatorConfig,
 } from '../tdc-data.js'
-import { getShips } from '../tdc-store.js'
+import { getShips, getCalcs } from '../tdc-store.js'
+import { getActivePatrol, recordShot } from '../tdc-log.js'
+import { getCalcInputs, setCalcInput } from '../calc-inputs.js'
+import { buildCalcSnapshots } from '../snapshot-utils.js'
 import { evaluateFormula } from '../formula-engine.js'
 import { I18nElement } from '../i18n.js'
 import { formStyles } from '../shared-styles.js'
@@ -26,8 +29,10 @@ export class CalcPanel extends I18nElement {
 
   @state() private values: Record<string, string> = {}
   @state() private shipId = ''
+  @state() private recorded = false
 
   private touched = new Set<string>()
+  private recordTimer = 0
 
   protected override willUpdate(changed: PropertyValues) {
     super.willUpdate(changed)
@@ -37,17 +42,23 @@ export class CalcPanel extends I18nElement {
   }
 
   private init() {
+    const config = this.config
+    if (!config) return
+    const prev = getCalcInputs(config.id)
     const values: Record<string, string> = {}
-    for (const c of this.config?.controls ?? []) {
+    for (const c of config.controls) {
       if (c.kind === 'number') {
-        values[c.name] = String(c.default ?? 0)
+        values[c.name] = prev[c.name] ?? String(c.default ?? 0)
+        setCalcInput(config.id, c.name, values[c.name])
       } else if (c.kind === 'select') {
         const opt = c.options.find(o => o.id === c.defaultId) ?? c.options[0]
-        values[c.name] = opt ? opt.id : ''
+        values[c.name] = prev[c.name] ?? (opt ? opt.id : '')
+        setCalcInput(config.id, c.name, values[c.name])
       }
     }
     this.values = values
-    this.shipId = ''
+    this.shipId = prev['ship'] ?? ''
+    setCalcInput(config.id, 'ship', this.shipId)
     this.touched = new Set()
   }
 
@@ -119,17 +130,52 @@ export class CalcPanel extends I18nElement {
     return out
   }
 
+  private resultLabel(f: CalcFormula): string {
+    return f.label ? locText(f.label, this.locale) : f.id
+  }
+
+  private snapshotInputs(): Record<string, Record<string, string>> {
+    const result: Record<string, Record<string, string>> = {}
+    for (const c of getCalcs()) result[c.id] = getCalcInputs(c.id)
+    return result
+  }
+
+  private buildSnapshot() {
+    return buildCalcSnapshots(getCalcs(), this.snapshotInputs(), this.locale)
+  }
+
+  private _shoot() {
+    const patrol = getActivePatrol()
+    if (!this.config || !patrol) return
+    const snapshot = this.buildSnapshot()
+    if (snapshot.length === 0) return
+    recordShot(snapshot)
+    this.recorded = true
+    window.clearTimeout(this.recordTimer)
+    this.recordTimer = window.setTimeout(() => {
+      this.recorded = false
+    }, 2000)
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback()
+    window.clearTimeout(this.recordTimer)
+  }
+
   private _onNumber(name: string, e: Event) {
     this.touched.add(name)
     this.values = { ...this.values, [name]: (e.target as HTMLInputElement).value }
+    if (this.config) setCalcInput(this.config.id, name, this.values[name])
   }
 
   private _onSelect(name: string, e: Event) {
     this.values = { ...this.values, [name]: (e.target as HTMLSelectElement).value }
+    if (this.config) setCalcInput(this.config.id, name, this.values[name])
   }
 
   private _onShip(e: Event) {
     this.shipId = (e.target as HTMLSelectElement).value
+    if (this.config) setCalcInput(this.config.id, 'ship', this.shipId)
   }
 
   private renderControl(c: CalcControl) {
@@ -210,7 +256,7 @@ export class CalcPanel extends I18nElement {
   }
 
   private renderResult(r: CalcResult) {
-    const label = r.formula.label ? locText(r.formula.label, this.locale) : r.formula.id
+    const label = this.resultLabel(r.formula)
     return html`
       <div class="calc-result">
         <div class="calc-result-head">
@@ -233,12 +279,26 @@ export class CalcPanel extends I18nElement {
     const config = this.config
     if (!config) return nothing
     const results = this.computeResults()
+    const patrolActive = getActivePatrol() !== null
     return html`
       <section class="panel">
         <h2 class="panel-title">${locText(config.title, this.locale)}</h2>
         ${config.hint ? html`<p class="hint">${locText(config.hint, this.locale)}</p>` : nothing}
         <div class="calc-grid">${config.controls.map(c => this.renderControl(c))}</div>
         <div class="calc-results">${results.map(r => this.renderResult(r))}</div>
+        <div class="record-bar">
+          <button
+            type="button"
+            class="btn btn-accent"
+            ?disabled=${!patrolActive}
+            @click=${this._shoot}
+          >
+            ${this.recorded ? this.t('calcs.recorded') : this.t('calcs.recordShot')}
+          </button>
+          ${patrolActive || this.recorded
+            ? nothing
+            : html`<span class="record-hint">${this.t('calcs.recordHint')}</span>`}
+        </div>
       </section>
     `
   }
@@ -371,6 +431,64 @@ export class CalcPanel extends I18nElement {
         font-family: var(--mono);
         font-size: 12px;
         color: #e58a8a;
+      }
+
+      .record-bar {
+        margin-top: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .record-hint {
+        font-size: 12.5px;
+        color: var(--text-dim);
+      }
+
+      .btn {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        border-radius: 8px;
+        padding: 9px 16px;
+        font: inherit;
+        font-size: 13.5px;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          border-color 0.15s,
+          color 0.15s;
+      }
+
+      .btn:hover {
+        border-color: var(--accent-border);
+        color: var(--text);
+      }
+
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+
+      .btn-accent {
+        background: var(--accent);
+        border-color: transparent;
+        color: #06121b;
+        font-weight: 600;
+      }
+
+      .btn-accent:hover {
+        background: var(--accent);
+        filter: brightness(1.08);
+        color: #06121b;
+      }
+
+      .btn-accent:disabled {
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        color: var(--text-dim);
       }
 
       @media (max-width: 640px) {
