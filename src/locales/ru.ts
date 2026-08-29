@@ -325,7 +325,7 @@ export const ru = {
     invalid: 'Ошибка формулы: {error}',
   },
   docs: {
-    versionLabel: 'Документация · версия',
+    navLabel: 'Содержание',
     loading: 'Загрузка документации…',
     loadError: 'Не удалось загрузить документацию.',
   },
