@@ -1,18 +1,23 @@
 {
   "name": "wpcalc",
   "private": true,
-  "version": "0.1.1",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
-    "lit": "^3.3.3"
+    "lit": "^3.3.3",
+    "pdfmake": "^0.3.11"
   },
   "devDependencies": {
+    "@types/pdfmake": "^0.3.3",
+    "happy-dom": "^20.11.15",
     "typescript": "~6.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
   }
 }

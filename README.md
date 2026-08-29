@@ -1,5 +1,7 @@
 # TDC Calculator
 
+![TDC Calculator](.github/tdc.jpg)
+
 [Русский](./README.ru.md)
 
 A web calculator for torpedo data computer (TDC) settings for a submarine simulator.
