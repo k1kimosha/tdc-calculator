@@ -1,27 +1,39 @@
 import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import './components/distance-panel.js'
-import './components/speed-panel.js'
-import './components/aob-panel.js'
-import './components/okane-panel.js'
+import './components/calc-panel.js'
 import './components/reference-panel.js'
 import './components/docs-panel.js'
 import { I18nElement, LOCALE_OPTIONS, setLocale } from './i18n.js'
-
-type Tab = 'distance' | 'speed' | 'aob' | 'okane' | 'reference' | 'docs'
-
-const TABS: { id: Tab; labelKey: string; hintKey: string }[] = [
-  { id: 'distance', labelKey: 'app.tabs.distance.label', hintKey: 'app.tabs.distance.hint' },
-  { id: 'speed', labelKey: 'app.tabs.speed.label', hintKey: 'app.tabs.speed.hint' },
-  { id: 'aob', labelKey: 'app.tabs.aob.label', hintKey: 'app.tabs.aob.hint' },
-  { id: 'okane', labelKey: 'app.tabs.okane.label', hintKey: 'app.tabs.okane.hint' },
-  { id: 'reference', labelKey: 'app.tabs.reference.label', hintKey: 'app.tabs.reference.hint' },
-  { id: 'docs', labelKey: 'app.tabs.docs.label', hintKey: 'app.tabs.docs.hint' },
-]
+import { locText, type CalculatorConfig } from './tdc-data.js'
+import { getCalcs, subscribeCatalog } from './tdc-store.js'
 
 @customElement('tdc-app')
 export class TdcApp extends I18nElement {
-  @state() private tab: Tab = 'distance'
+  @state() private tab = ''
+  @state() private calcs: CalculatorConfig[] = []
+
+  private unsub: (() => void) | null = null
+
+  override connectedCallback() {
+    super.connectedCallback()
+    this.refresh()
+    this.unsub = subscribeCatalog(() => this.refresh())
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback()
+    this.unsub?.()
+    this.unsub = null
+  }
+
+  private refresh() {
+    this.calcs = getCalcs()
+    if (this.tab !== 'reference' && this.tab !== 'docs') {
+      if (!this.calcs.some(c => c.id === this.tab)) {
+        this.tab = this.calcs[0]?.id ?? 'reference'
+      }
+    }
+  }
 
   static styles = css`
     :host {
@@ -115,7 +127,7 @@ export class TdcApp extends I18nElement {
 
     .tabs {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
       gap: 6px;
       padding: 6px;
       margin-bottom: 18px;
@@ -190,6 +202,17 @@ export class TdcApp extends I18nElement {
   `
 
   render() {
+    const tabs: { id: string; label: string; hint: string }[] = [
+      ...this.calcs.map(c => ({
+        id: c.id,
+        label: locText(c.title, this.locale) || c.id,
+        hint: c.hint ? locText(c.hint, this.locale) : '',
+      })),
+      { id: 'reference', label: this.t('app.tabs.reference.label'), hint: this.t('app.tabs.reference.hint') },
+      { id: 'docs', label: this.t('app.tabs.docs.label'), hint: this.t('app.tabs.docs.hint') },
+    ]
+    const active = this.calcs.find(c => c.id === this.tab)
+
     return html`
       <header class="masthead">
         <svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
@@ -218,7 +241,7 @@ export class TdcApp extends I18nElement {
       </header>
 
       <nav class="tabs" role="tablist" aria-label=${this.t('app.tabs.aria')}>
-        ${TABS.map(
+        ${tabs.map(
           t => html`
             <button
               type="button"
@@ -227,23 +250,16 @@ export class TdcApp extends I18nElement {
               class="tab ${this.tab === t.id ? 'active' : ''}"
               @click=${() => (this.tab = t.id)}
             >
-              <span class="t-label">${this.t(t.labelKey)}</span>
-              <span class="t-hint">${this.t(t.hintKey)}</span>
+              <span class="t-label">${t.label}</span>
+              ${t.hint ? html`<span class="t-hint">${t.hint}</span>` : ''}
             </button>
           `,
         )}
       </nav>
 
       <main>
-        ${this.tab === 'distance'
-          ? html`<tdc-distance-panel></tdc-distance-panel>`
-          : ''}
-        ${this.tab === 'speed' ? html`<tdc-speed-panel></tdc-speed-panel>` : ''}
-        ${this.tab === 'aob' ? html`<tdc-aob-panel></tdc-aob-panel>` : ''}
-        ${this.tab === 'okane' ? html`<tdc-okane-panel></tdc-okane-panel>` : ''}
-        ${this.tab === 'reference'
-          ? html`<tdc-reference-panel></tdc-reference-panel>`
-          : ''}
+        ${active ? html`<tdc-calc-panel .config=${active}></tdc-calc-panel>` : ''}
+        ${this.tab === 'reference' ? html`<tdc-reference-panel></tdc-reference-panel>` : ''}
         ${this.tab === 'docs' ? html`<tdc-docs-panel></tdc-docs-panel>` : ''}
       </main>
 

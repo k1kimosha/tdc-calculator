@@ -1,19 +1,20 @@
 import {
-  DEFAULT_CALCS,
+  DEFAULT_CALC_CONFIGS,
   DEFAULT_SCENARIOS,
   DEFAULT_SHIPS,
-  CALC_IDS,
+  defaultCalcConfig,
   defaultFormulasFor,
+  type CalcControl,
   type CalcFormula,
   type CalculatorConfig,
-  type CalculatorId,
+  type CalcSelectOption,
   type Scenario,
   type ScenarioMode,
   type ShipClass,
 } from './tdc-data.js'
 
 export const STORAGE_KEY = 'tdc-catalog'
-export const CATALOG_VERSION = 2
+export const CATALOG_VERSION = 3
 
 export const NOTE_CATEGORIES = ['tdc', 'identification', 'general'] as const
 export type NoteCategory = (typeof NOTE_CATEGORIES)[number]
@@ -44,7 +45,7 @@ function defaultCatalog(): TdcCatalog {
     version: CATALOG_VERSION,
     ships: clone(DEFAULT_SHIPS),
     scenarios: clone(DEFAULT_SCENARIOS),
-    calcs: clone(DEFAULT_CALCS),
+    calcs: clone(DEFAULT_CALC_CONFIGS),
     notes: [],
   }
 }
@@ -95,22 +96,158 @@ function normalizeCatalogShape(value: unknown): TdcCatalog | null {
   }
 }
 
-function normalizeCalcs(value: unknown): CalculatorConfig[] {
+function asLocaleTextOpt(value: unknown, fallback: string): LocaleText | undefined {
+  if (value === undefined || value === null) return undefined
+  return asLocaleText(value, fallback)
+}
+
+function normalizeSelectOption(value: unknown): CalcSelectOption | null {
+  if (!value || typeof value !== 'object') return null
+  const raw = value as Record<string, unknown>
+  const id = asStr(raw.id, '')
+  if (!id) return null
+  return {
+    id,
+    label: asLocaleText(raw.label, ''),
+    value: typeof raw.value === 'number' ? asNum(raw.value) : asStr(raw.value, ''),
+  }
+}
+
+function normalizeLiveRow(value: unknown) {
+  if (!value || typeof value !== 'object') return null
+  const raw = value as Record<string, unknown>
+  return {
+    label: asLocaleText(raw.label, ''),
+    expr: asStr(raw.expr, ''),
+  }
+}
+
+function normalizeCalcControl(value: unknown): CalcControl | null {
+  if (!value || typeof value !== 'object') return null
+  const raw = value as Record<string, unknown>
+  const id = asStr(raw.id, '')
+  if (!id) return null
+  const label = asLocaleText(raw.label, '')
+  const optVar = (v: unknown): string | undefined => {
+    const s = asStr(v, '')
+    return s === '' ? undefined : s
+  }
+  switch (raw.kind) {
+    case 'number':
+      return {
+        kind: 'number',
+        id,
+        label,
+        name: asStr(raw.name, id),
+        default: asNum(raw.default, 0),
+        ...(asLocaleTextOpt(raw.unit, '') ? { unit: asLocaleText(raw.unit, '') } : {}),
+      }
+    case 'select': {
+      const options = Array.isArray(raw.options)
+        ? raw.options
+            .map(normalizeSelectOption)
+            .filter((o): o is CalcSelectOption => o !== null)
+        : []
+      return {
+        kind: 'select',
+        id,
+        label,
+        name: asStr(raw.name, id),
+        options,
+        defaultId: asStr(raw.defaultId, options[0]?.id ?? ''),
+      }
+    }
+    case 'ships':
+      return {
+        kind: 'ships',
+        id,
+        label,
+        bindLength: optVar(raw.bindLength),
+        bindMast: optVar(raw.bindMast),
+        bindFunnel: optVar(raw.bindFunnel),
+        landmarkVar: optVar(raw.landmarkVar),
+      }
+    case 'liveTable': {
+      const rows = Array.isArray(raw.rows)
+        ? raw.rows
+            .map(normalizeLiveRow)
+            .filter((r): r is NonNullable<ReturnType<typeof normalizeLiveRow>> => r !== null)
+        : []
+      return {
+        kind: 'liveTable',
+        id,
+        label,
+        ...(asLocaleTextOpt(raw.rowLabel, '') ? { rowLabel: asLocaleText(raw.rowLabel, '') } : {}),
+        valueLabel: asLocaleText(raw.valueLabel, ''),
+        rows,
+      }
+    }
+    default:
+      return null
+  }
+}
+
+function normalizeFormulas(value: unknown, base: CalcFormula[]): CalcFormula[] {
   const raw = Array.isArray(value) ? value : []
-  const result: CalculatorConfig[] = []
-  for (const id of CALC_IDS) {
-    const entry = raw.find(
-      c => c && typeof c === 'object' && (c as Record<string, unknown>).id === id,
-    ) as Record<string, unknown> | undefined
-    const rawFormulas = Array.isArray(entry?.formulas) ? (entry.formulas as unknown[]) : []
-    const formulas: CalcFormula[] = defaultFormulasFor(id).map(def => {
-      const match = rawFormulas.find(
-        f => f && typeof f === 'object' && (f as Record<string, unknown>).id === def.id,
-      )
-      const expr = match ? (match as Record<string, unknown>).expr : undefined
-      return { id: def.id, expr: asStr(expr, def.expr) }
+  const out: CalcFormula[] = []
+  const seen = new Set<string>()
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const rec = item as Record<string, unknown>
+    const id = asStr(rec.id, '')
+    if (!id || seen.has(id)) continue
+    const def = base.find(b => b.id === id)
+    out.push({
+      id,
+      expr: asStr(rec.expr, def?.expr ?? ''),
+      ...(asLocaleTextOpt(rec.label, '') ? { label: asLocaleText(rec.label, '') } : def?.label ? { label: clone(def.label) } : {}),
+      ...(asLocaleTextOpt(rec.unit, '') ? { unit: asLocaleText(rec.unit, '') } : def?.unit ? { unit: clone(def.unit) } : {}),
     })
-    result.push({ id, formulas })
+    seen.add(id)
+  }
+  return out.length ? out : clone(base)
+}
+
+function normalizeCalculatorConfig(value: unknown): CalculatorConfig | null {
+  if (!value || typeof value !== 'object') return null
+  const rec = value as Record<string, unknown>
+  const id = asStr(rec.id, '')
+  if (!id) return null
+  const base = defaultCalcConfig(id)
+  const controls = Array.isArray(rec.controls)
+    ? rec.controls
+        .map(normalizeCalcControl)
+        .filter((c): c is CalcControl => c !== null)
+    : base
+      ? clone(base.controls)
+      : []
+  const formulas = normalizeFormulas(rec.formulas, base?.formulas ?? [])
+  const title =
+    rec.title !== undefined && rec.title !== null
+      ? asLocaleText(rec.title, '')
+      : base?.title
+        ? clone(base.title)
+        : { ru: '', en: '' }
+  const hint = asLocaleTextOpt(rec.hint, '') ?? (base?.hint ? clone(base.hint) : undefined)
+  return {
+    id,
+    title,
+    ...(hint ? { hint } : {}),
+    controls,
+    formulas,
+  }
+}
+
+function normalizeCalcs(value: unknown): CalculatorConfig[] {
+  if (!Array.isArray(value)) return clone(DEFAULT_CALC_CONFIGS)
+  const result: CalculatorConfig[] = []
+  const seen = new Set<string>()
+  for (const item of value) {
+    const config = normalizeCalculatorConfig(item)
+    if (config && !seen.has(config.id)) {
+      result.push(config)
+      seen.add(config.id)
+    }
   }
   return result
 }
@@ -238,7 +375,7 @@ export function getCalcs(): CalculatorConfig[] {
   return readCatalog().calcs
 }
 
-export function getFormulas(id: CalculatorId): Record<string, string> {
+export function getFormulas(id: string): Record<string, string> {
   const config = readCatalog().calcs.find(c => c.id === id)
   const list = config?.formulas.length ? config.formulas : defaultFormulasFor(id)
   const out: Record<string, string> = {}
@@ -246,12 +383,19 @@ export function getFormulas(id: CalculatorId): Record<string, string> {
   return out
 }
 
-export function upsertCalculator(config: CalculatorConfig) {
+export function upsertCalculator(config: Partial<CalculatorConfig> & { id: string }) {
+  const normalized = normalizeCalculatorConfig(config)
+  if (!normalized) return
   updateCatalog(catalog => {
-    const index = catalog.calcs.findIndex(c => c.id === config.id)
-    const entry = clone(config)
-    if (index >= 0) catalog.calcs[index] = entry
-    else catalog.calcs.push(entry)
+    const index = catalog.calcs.findIndex(c => c.id === normalized.id)
+    if (index >= 0) catalog.calcs[index] = normalized
+    else catalog.calcs.push(normalized)
+  })
+}
+
+export function removeCalculator(id: string) {
+  updateCatalog(catalog => {
+    catalog.calcs = catalog.calcs.filter(c => c.id !== id)
   })
 }
 

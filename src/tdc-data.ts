@@ -248,57 +248,321 @@ export function rizkiFromVisibleMeters(visible: number, distance: number): numbe
   return (visible * 1000) / distance
 }
 
-export const CALC_IDS = ['distance', 'speed', 'aob', 'okane'] as const
+export type LocaleText = Record<Locale, string>
 
-export type CalculatorId = (typeof CALC_IDS)[number]
+export const SPEED_TABLE = [6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36]
+
+export interface CalcControlBase {
+  id: string
+  label: LocaleText
+}
+
+export interface CalcNumberControl extends CalcControlBase {
+  kind: 'number'
+  name: string
+  default: number
+  unit?: LocaleText
+}
+
+export interface CalcSelectOption {
+  id: string
+  label: LocaleText
+  value: number | string
+}
+
+export interface CalcSelectControl extends CalcControlBase {
+  kind: 'select'
+  name: string
+  options: CalcSelectOption[]
+  defaultId: string
+}
+
+export interface CalcShipsControl extends CalcControlBase {
+  kind: 'ships'
+  bindLength?: string
+  bindMast?: string
+  bindFunnel?: string
+  landmarkVar?: string
+}
+
+export interface CalcLiveTableRow {
+  label: LocaleText
+  expr: string
+}
+
+export interface CalcLiveTableControl extends CalcControlBase {
+  kind: 'liveTable'
+  rowLabel?: LocaleText
+  valueLabel: LocaleText
+  rows: CalcLiveTableRow[]
+}
+
+export type CalcControl =
+  | CalcNumberControl
+  | CalcSelectControl
+  | CalcShipsControl
+  | CalcLiveTableControl
 
 export interface CalcFormula {
   id: string
   expr: string
+  label?: LocaleText
+  unit?: LocaleText
 }
 
 export interface CalculatorConfig {
-  id: CalculatorId
+  id: string
+  title: LocaleText
+  hint?: LocaleText
+  controls: CalcControl[]
   formulas: CalcFormula[]
 }
 
-export const DEFAULT_CALCS: CalculatorConfig[] = [
+const DEG: LocaleText = { ru: '°', en: '°' }
+const METERS: LocaleText = { ru: 'м', en: 'm' }
+const KNOTS: LocaleText = { ru: 'уз', en: 'kn' }
+const SECONDS: LocaleText = { ru: 'с', en: 's' }
+
+const torpedoOptions: CalcSelectOption[] = TORPEDO_SPEEDS.map(t => ({
+  id: t.id,
+  label: t.label,
+  value: t.knots,
+}))
+
+export const DEFAULT_CALC_CONFIGS: CalculatorConfig[] = [
   {
     id: 'distance',
+    title: { ru: 'Дистанция', en: 'Range' },
+    hint: { ru: 'риски ↔ метры', en: 'ticks ↔ meters' },
+    controls: [
+      {
+        id: 'ship',
+        kind: 'ships',
+        label: { ru: 'Корабль', en: 'Ship' },
+        bindMast: 'h',
+        bindFunnel: 'h',
+        landmarkVar: 'landmark',
+      },
+      {
+        id: 'landmark',
+        kind: 'select',
+        label: { ru: 'Ориентир', en: 'Reference' },
+        name: 'landmark',
+        options: [
+          { id: 'mast', label: { ru: 'Мачта', en: 'Mast' }, value: 'mast' },
+          { id: 'funnel', label: { ru: 'Труба', en: 'Funnel' }, value: 'funnel' },
+        ],
+        defaultId: 'mast',
+      },
+      {
+        id: 'k',
+        kind: 'select',
+        label: { ru: 'Кратность прибора', en: 'Magnification' },
+        name: 'k',
+        options: [
+          { id: 'standard', label: { ru: 'Штатная ×1,5', en: 'Standard ×1.5' }, value: 92.5 },
+          { id: 'approach', label: { ru: 'С приближением ×6', en: 'Approach ×6' }, value: 366 },
+        ],
+        defaultId: 'approach',
+      },
+      {
+        id: 'h',
+        kind: 'number',
+        label: { ru: 'Высота ориентира, м', en: 'Reference height, m' },
+        name: 'h',
+        default: 20,
+        unit: METERS,
+      },
+      {
+        id: 'r',
+        kind: 'number',
+        label: { ru: 'Риски по вертикали', en: 'Ticks vertical' },
+        name: 'r',
+        default: 6,
+      },
+      {
+        id: 'd',
+        kind: 'number',
+        label: { ru: 'Дистанция, м', en: 'Range, m' },
+        name: 'd',
+        default: 0,
+        unit: METERS,
+      },
+      {
+        id: 'cheat',
+        kind: 'liveTable',
+        label: { ru: 'Шпаргалка: риски → дистанция', en: 'Cheat sheet: ticks → range' },
+        rowLabel: { ru: 'Риски', en: 'Ticks' },
+        valueLabel: { ru: 'Дистанция, м', en: 'Range, m' },
+        rows: CHEAT_SHEET_RIZKI.map(r => ({
+          label: { ru: String(r), en: String(r) },
+          expr: `h*k/${r}`,
+        })),
+      },
+    ],
     formulas: [
-      { id: 'dist', expr: 'h*k/r' },
-      { id: 'rizki', expr: 'h*k/d' },
+      { id: 'dist', expr: 'h*k/r', label: { ru: 'Дистанция по рискам', en: 'Range from ticks' }, unit: METERS },
+      { id: 'rizki', expr: 'h*k/d', label: { ru: 'Риски по дистанции', en: 'Ticks from range' } },
     ],
   },
   {
     id: 'speed',
+    title: { ru: 'Скорость', en: 'Speed' },
+    hint: { ru: 'длина ÷ время', en: 'length ÷ time' },
+    controls: [
+      {
+        id: 'ship',
+        kind: 'ships',
+        label: { ru: 'Корабль', en: 'Ship' },
+        bindLength: 'l',
+      },
+      {
+        id: 'l',
+        kind: 'number',
+        label: { ru: 'Длина цели, м', en: 'Target length, m' },
+        name: 'l',
+        default: 115,
+        unit: METERS,
+      },
+      {
+        id: 't',
+        kind: 'number',
+        label: { ru: 'Время прохода нос–корма, с', en: 'Bow-to-stern transit time, s' },
+        name: 't',
+        default: 40,
+        unit: SECONDS,
+      },
+      {
+        id: 'cheat',
+        kind: 'liveTable',
+        label: { ru: 'Шпаргалка: время прохода', en: 'Cheat sheet: transit time' },
+        rowLabel: { ru: 'Скорость', en: 'Speed' },
+        valueLabel: { ru: 'Время прохода, с', en: 'Transit time, s' },
+        rows: SPEED_TABLE.map(v => ({
+          label: { ru: `${v} уз`, en: `${v} kn` },
+          expr: `l*1.94/${v}`,
+        })),
+      },
+    ],
     formulas: [
-      { id: 'speed', expr: 'l/t*1.94' },
-      { id: 'transit', expr: 'l*1.94/spd' },
+      { id: 'speed', expr: 'l/t*1.94', label: { ru: 'Скорость цели', en: 'Target speed' }, unit: KNOTS },
+      { id: 'transit', expr: 'l*1.94/spd', label: { ru: 'Время прохода', en: 'Transit time' }, unit: SECONDS },
     ],
   },
   {
     id: 'aob',
+    title: { ru: 'КУЦ', en: 'AOB' },
+    hint: { ru: 'курсовой угол', en: 'angle on the bow' },
+    controls: [
+      {
+        id: 'ship',
+        kind: 'ships',
+        label: { ru: 'Корабль', en: 'Ship' },
+        bindLength: 'l',
+      },
+      {
+        id: 'l',
+        kind: 'number',
+        label: { ru: 'Длина цели, м', en: 'Target length, m' },
+        name: 'l',
+        default: 62,
+        unit: METERS,
+      },
+      {
+        id: 'r',
+        kind: 'number',
+        label: { ru: 'Риски (видимая длина)', en: 'Ticks (visible length)' },
+        name: 'r',
+        default: 15,
+      },
+      {
+        id: 'd',
+        kind: 'number',
+        label: { ru: 'Дистанция, м', en: 'Range, m' },
+        name: 'd',
+        default: 2379,
+        unit: METERS,
+      },
+      {
+        id: 'a',
+        kind: 'number',
+        label: { ru: 'КУЦ, °', en: 'AOB, °' },
+        name: 'a',
+        default: 90,
+        unit: DEG,
+      },
+      {
+        id: 'cheat',
+        kind: 'liveTable',
+        label: { ru: 'Шпаргалка: КУЦ → риски', en: 'Cheat sheet: AOB → ticks' },
+        rowLabel: { ru: 'КУЦ', en: 'AOB' },
+        valueLabel: { ru: 'Риски', en: 'Ticks' },
+        rows: [15, 30, 45, 60, 75, 90].map(a => ({
+          label: { ru: `${a}°`, en: `${a}°` },
+          expr: `l*sin(${a}*pi/180)*1000/d`,
+        })),
+      },
+    ],
     formulas: [
-      { id: 'visRizki', expr: 'r*d/1000' },
-      { id: 'aob', expr: 'asin(v/l)*180/pi' },
-      { id: 'visAob', expr: 'l*sin(a*pi/180)' },
-      { id: 'rizki', expr: 'v*1000/d' },
+      { id: 'visRizki', expr: 'r*d/1000', label: { ru: 'Видимая длина по рискам', en: 'Visible length from ticks' }, unit: METERS },
+      { id: 'aob', expr: 'asin(v/l)*180/pi', label: { ru: 'КУЦ по видимой длине', en: 'AOB from visible length' }, unit: DEG },
+      { id: 'visAob', expr: 'l*sin(a*pi/180)', label: { ru: 'Видимая длина по КУЦ', en: 'Visible length from AOB' }, unit: METERS },
+      { id: 'rizki', expr: 'v*1000/d', label: { ru: 'Риски по видимой длине', en: 'Ticks from visible length' } },
     ],
   },
   {
     id: 'okane',
+    title: { ru: 'О’Кейн', en: 'O’Kane' },
+    hint: { ru: 'упреждение', en: 'lead angle' },
+    controls: [
+      {
+        id: 'vs',
+        kind: 'select',
+        label: { ru: 'Скорость торпеды', en: 'Torpedo speed' },
+        name: 'vs',
+        options: torpedoOptions,
+        defaultId: TORPEDO_SPEEDS[1].id,
+      },
+      {
+        id: 'vt',
+        kind: 'number',
+        label: { ru: 'Скорость цели, уз', en: 'Target speed, kn' },
+        name: 'vt',
+        default: 8,
+        unit: KNOTS,
+      },
+      {
+        id: 'd',
+        kind: 'number',
+        label: { ru: 'Дистанция, м', en: 'Range, m' },
+        name: 'd',
+        default: 1500,
+        unit: METERS,
+      },
+      {
+        id: 'aob',
+        kind: 'number',
+        label: { ru: 'КУЦ, °', en: 'AOB, °' },
+        name: 'aob',
+        default: 90,
+        unit: DEG,
+      },
+    ],
     formulas: [
-      { id: 'lead', expr: 'atan(vt/vs)*180/pi' },
-      { id: 'leadGen', expr: 'asin(vt/vs*sin(aob*pi/180))*180/pi' },
-      { id: 'trackAngle', expr: '180-aob-lead' },
-      { id: 'runTime', expr: 'd/(vs*c)' },
+      { id: 'lead', expr: 'atan(vt/vs)*180/pi', label: { ru: 'Угол упреждения', en: 'Lead angle' }, unit: DEG },
+      { id: 'leadGen', expr: 'asin(vt/vs*sin(aob*pi/180))*180/pi', label: { ru: 'Упреждение, общий случай', en: 'Lead, general case' }, unit: DEG },
+      { id: 'trackAngle', expr: '180-aob-lead', label: { ru: 'Угол встречи', en: 'Track angle' }, unit: DEG },
+      { id: 'runTime', expr: 'd/(vs*c)', label: { ru: 'Время хода торпеды', en: 'Torpedo run time' }, unit: SECONDS },
     ],
   },
 ]
 
-export function defaultFormulasFor(id: CalculatorId): CalcFormula[] {
-  return DEFAULT_CALCS.find(c => c.id === id)?.formulas ?? []
+export function defaultCalcConfig(id: string): CalculatorConfig | undefined {
+  return DEFAULT_CALC_CONFIGS.find(c => c.id === id)
+}
+
+export function defaultFormulasFor(id: string): CalcFormula[] {
+  return DEFAULT_CALC_CONFIGS.find(c => c.id === id)?.formulas ?? []
 }
 
 export const IDENTIFICATION_METHODS: IdentificationMethod[] = [
