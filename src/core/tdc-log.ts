@@ -6,7 +6,7 @@
 import { newId } from './tdc-store.js'
 
 export const LOG_STORAGE_KEY = 'tdc-log'
-export const LOG_VERSION = 2
+export const LOG_VERSION = 3
 
 export const SHOT_OUTCOMES = [
   'none',
@@ -17,6 +17,10 @@ export const SHOT_OUTCOMES = [
   'hit_other',
 ] as const
 export type ShotOutcome = (typeof SHOT_OUTCOMES)[number]
+
+/** Способ ведения стрельбы: по расчётам (пеленг) или на упреждение (О'Кейн). */
+export const SHOT_METHODS = ['calculated', 'lead'] as const
+export type ShotMethod = (typeof SHOT_METHODS)[number]
 
 export interface ShotSnapshotInput {
   name: string
@@ -53,6 +57,7 @@ export interface Shot {
   elapsedMs: number
   at: number
   snapshot: ShotSnapshot
+  method: ShotMethod
   outcome: ShotOutcome
   note: string
 }
@@ -111,6 +116,10 @@ function asLocaleTitle(value: unknown): { ru: string; en: string } {
 
 function isOutcome(value: unknown): value is ShotOutcome {
   return (SHOT_OUTCOMES as readonly string[]).includes(asStr(value))
+}
+
+function isMethod(value: unknown): value is ShotMethod {
+  return (SHOT_METHODS as readonly string[]).includes(asStr(value))
 }
 
 function normalizeSnapshotCalc(value: unknown): ShotSnapshotCalc | null {
@@ -182,6 +191,7 @@ function normalizeShot(value: unknown): Shot | null {
     elapsedMs: asNum(raw.elapsedMs),
     at: asNum(raw.at, Date.now()),
     snapshot,
+    method: isMethod(raw.method) ? raw.method : 'calculated',
     outcome: isOutcome(raw.outcome) ? raw.outcome : 'none',
     note: asStr(raw.note, ''),
   }
@@ -309,7 +319,7 @@ export function endPatrol(): Patrol | null {
   return patrol
 }
 
-export function recordShot(snapshot: ShotSnapshot): Shot | null {
+export function recordShot(snapshot: ShotSnapshot, method: ShotMethod = 'calculated'): Shot | null {
   const log = readLog()
   const patrol = log.patrols.find(p => p.id === log.activePatrolId)
   if (!patrol) return null
@@ -318,6 +328,7 @@ export function recordShot(snapshot: ShotSnapshot): Shot | null {
     elapsedMs: Math.max(0, Date.now() - patrol.startedAt),
     at: Date.now(),
     snapshot,
+    method,
     outcome: 'none',
     note: '',
   }

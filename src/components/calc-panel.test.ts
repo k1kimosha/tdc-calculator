@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { setLocale } from '../core/i18n.js'
 import { CalcPanel } from './calc-panel.js'
 import { getShips, resetCatalog } from '../core/tdc-store.js'
+import { getActivePatrol, startPatrol } from '../core/tdc-log.js'
 import type { CalculatorConfig } from '../core/tdc-data.js'
 
 const tick = () => new Promise<void>(r => setTimeout(r))
@@ -130,5 +131,18 @@ describe('calc panel', () => {
     select.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
     await el.updateComplete
     expect(resultValues(el)).toEqual(['115'])
+  })
+
+  it('records a shot with the selected firing method', async () => {
+    startPatrol('Тестовый', 'u96')
+    const el = await mount(FEED_CONFIG)
+    const leadSeg = [...el.shadowRoot!.querySelectorAll<HTMLButtonElement>('.method-seg .seg')].find(b =>
+      b.textContent!.includes('На упреждение'),
+    )!
+    leadSeg.click()
+    await el.updateComplete
+    el.shadowRoot!.querySelector<HTMLButtonElement>('.record-bar .btn')!.click()
+    await el.updateComplete
+    expect(getActivePatrol()!.shots[0].method).toBe('lead')
   })
 })

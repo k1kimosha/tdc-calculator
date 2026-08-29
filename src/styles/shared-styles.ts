@@ -199,6 +199,8 @@ export const segmentStyles = css`
 export const tableStyles = css`
   .table-wrap {
     overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
 
   table {
@@ -217,6 +219,7 @@ export const tableStyles = css`
     color: var(--text-dim);
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
+    vertical-align: middle;
   }
 
   td {
@@ -224,6 +227,7 @@ export const tableStyles = css`
     border-bottom: 1px solid var(--border);
     color: var(--text);
     vertical-align: middle;
+    overflow-wrap: anywhere;
   }
 
   tbody tr:hover {
@@ -234,9 +238,21 @@ export const tableStyles = css`
   th.num {
     text-align: right;
     font-family: var(--mono);
+    white-space: nowrap;
   }
 
   tbody tr.selected {
     background: var(--accent-dim);
+  }
+
+  @media (max-width: 640px) {
+    th,
+    td {
+      padding: 7px 9px;
+    }
+
+    table {
+      font-size: 12.5px;
+    }
   }
 `

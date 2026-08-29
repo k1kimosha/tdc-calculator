@@ -74,7 +74,9 @@ body {
 
 body {
   min-height: 100svh;
-  background: #0b1524;
+  background:
+    radial-gradient(900px 380px at 50% -80px, rgba(63, 217, 199, 0.07), transparent 65%),
+    #0b1524;
   color: #c9d5e2;
   font-family:
     'Noto Sans',

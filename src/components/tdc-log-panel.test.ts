@@ -85,6 +85,7 @@ describe('log panel', () => {
     const shotCards = el.shadowRoot!.querySelectorAll('.shot-card')
     expect(shotCards.length).toBe(1)
     expect(shotCards[0].querySelector('.shot-when')!.textContent).toBe('00:00:00')
+    expect(shotCards[0].querySelector('.shot-method')!.textContent).toContain('По расчётам')
     expect(shotCards[0].querySelector('.shot-calc-title')!.textContent).toContain('Дистанция')
     expect(shotCards[0].querySelector('.shot-formulas summary')!.textContent).toContain('Формулы')
 

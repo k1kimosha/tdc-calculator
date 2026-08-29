@@ -379,25 +379,27 @@ export class ReferencePanel extends I18nElement {
                               ? this.t('reference.ships.gunYes')
                               : this.t('reference.ships.gunNo')}
                           </td>
-                          <td class="row-actions">
-                            <button
-                              type="button"
-                              class="icon-btn"
-                              title=${this.t('reference.confirmDelete')}
-                              aria-label=${this.t('reference.ships.colClass')}
-                              @click=${() => this._openShip(s)}
-                            >
-                              ${editIcon}
-                            </button>
-                            <button
-                              type="button"
-                              class="icon-btn danger"
-                              title=${`${this.t('reference.ships.colClass')}: ${shipClassName(s, this.locale)}`}
-                              aria-label=${this.t('reference.confirmDelete')}
-                              @click=${() => this._deleteShip(s.id)}
-                            >
-                              ${trashIcon}
-                            </button>
+                          <td class="actions-cell">
+                            <div class="row-actions">
+                              <button
+                                type="button"
+                                class="icon-btn"
+                                title=${this.t('reference.confirmDelete')}
+                                aria-label=${this.t('reference.ships.colClass')}
+                                @click=${() => this._openShip(s)}
+                              >
+                                ${editIcon}
+                              </button>
+                              <button
+                                type="button"
+                                class="icon-btn danger"
+                                title=${`${this.t('reference.ships.colClass')}: ${shipClassName(s, this.locale)}`}
+                                aria-label=${this.t('reference.confirmDelete')}
+                                @click=${() => this._deleteShip(s.id)}
+                              >
+                                ${trashIcon}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       `,
@@ -879,6 +881,7 @@ export class ReferencePanel extends I18nElement {
 
       .section-head {
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
         align-items: center;
         gap: 12px;
@@ -969,14 +972,19 @@ export class ReferencePanel extends I18nElement {
         background: rgba(229, 138, 138, 0.1);
       }
 
-      .th-actions {
-        width: 64px;
+      .th-actions,
+      .actions-cell {
+        width: 1%;
+        min-width: 96px;
+        white-space: nowrap;
       }
 
       .row-actions {
         display: flex;
         gap: 6px;
         justify-content: flex-end;
+        flex-wrap: nowrap;
+        white-space: nowrap;
       }
 
       .icon-btn {
@@ -984,8 +992,9 @@ export class ReferencePanel extends I18nElement {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 28px;
-        height: 28px;
+        width: 30px;
+        height: 30px;
+        flex: none;
         border: 1px solid var(--border);
         border-radius: 7px;
         background: var(--panel-2);
@@ -1056,6 +1065,7 @@ export class ReferencePanel extends I18nElement {
 
       .scenario-head {
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
         align-items: center;
         gap: 10px;
@@ -1063,9 +1073,12 @@ export class ReferencePanel extends I18nElement {
 
       .scenario-title {
         margin: 0 0 12px;
+        min-width: 0;
+        flex: 1 1 auto;
         font-size: 13.5px;
         font-weight: 650;
         color: var(--accent);
+        overflow-wrap: anywhere;
       }
 
       .mode-field {
@@ -1098,9 +1111,11 @@ export class ReferencePanel extends I18nElement {
       }
 
       .stat-v {
+        min-width: 0;
         font-family: var(--mono);
         font-size: 15px;
         color: var(--text);
+        text-align: right;
       }
 
       .mode-group {
@@ -1164,6 +1179,7 @@ export class ReferencePanel extends I18nElement {
 
       .note-head {
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
         align-items: center;
         gap: 10px;
@@ -1315,17 +1331,22 @@ export class ReferencePanel extends I18nElement {
       }
 
       .calc-label {
+        flex: none;
         color: var(--text-dim);
       }
 
       .calc-expr {
+        flex: 1 1 auto;
+        min-width: 0;
         font-family: var(--mono);
         color: var(--accent);
         background: var(--panel-2);
         border: 1px solid var(--border);
         border-radius: 6px;
         padding: 2px 7px;
-        white-space: nowrap;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-align: right;
       }
 
       .calc-vars {

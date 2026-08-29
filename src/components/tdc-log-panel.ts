@@ -193,6 +193,9 @@ export class TdcLogPanel extends I18nElement {
       <div class="shot-card">
         <div class="shot-head">
           <span class="shot-when">${formatDuration(shot.elapsedMs)}</span>
+          <span class="shot-method ${shot.method === 'lead' ? 'lead' : ''}" title=${this.t('log.methodLabel')}>
+            ${shot.method === 'lead' ? this.t('log.methodLead') : this.t('log.methodCalculated')}
+          </span>
           <span class="shot-calc">${calcNames}</span>
           <span class="shot-actions">
             <button
@@ -481,6 +484,7 @@ export class TdcLogPanel extends I18nElement {
 
       .shot-head {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 10px;
         margin-bottom: 8px;
@@ -497,9 +501,28 @@ export class TdcLogPanel extends I18nElement {
         padding: 2px 10px;
       }
 
+      .shot-method {
+        flex: none;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-dim);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 2px 10px;
+        white-space: nowrap;
+      }
+
+      .shot-method.lead {
+        color: #e5b96a;
+        border-color: rgba(229, 185, 106, 0.45);
+        background: rgba(229, 185, 106, 0.12);
+      }
+
       .shot-calc {
+        min-width: 0;
         font-size: 14px;
         color: var(--text);
+        overflow-wrap: anywhere;
       }
 
       .shot-actions {
@@ -584,6 +607,7 @@ export class TdcLogPanel extends I18nElement {
 
       .patrol-head {
         display: flex;
+        flex-wrap: wrap;
         align-items: flex-start;
         justify-content: space-between;
         gap: 12px;
@@ -593,6 +617,7 @@ export class TdcLogPanel extends I18nElement {
         font-size: 15px;
         font-weight: 600;
         color: var(--text);
+        overflow-wrap: anywhere;
       }
 
       .patrol-sub {

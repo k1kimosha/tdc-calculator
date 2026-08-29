@@ -14,8 +14,8 @@ import {
   type CalculatorConfig,
 } from '../core/tdc-data.js'
 import { getShips, getCalcs } from '../core/tdc-store.js'
-import { getActivePatrol, recordShot } from '../core/tdc-log.js'
-import { getCalcInputs, setCalcInput } from '../core/calc-inputs.js'
+import { getActivePatrol, recordShot, type ShotMethod } from '../core/tdc-log.js'
+import { getCalcInputs, getShotMethod, setCalcInput, setShotMethod } from '../core/calc-inputs.js'
 import { buildCalcSnapshots } from '../core/snapshot-utils.js'
 import { evaluateFormula } from '../core/formula-engine.js'
 import { I18nElement } from '../core/i18n.js'
@@ -34,6 +34,7 @@ export class CalcPanel extends I18nElement {
   @state() private values: Record<string, string> = {}
   @state() private shipId = ''
   @state() private recorded = false
+  @state() private shotMethod: ShotMethod = getShotMethod()
 
   private touched = new Set<string>()
   private recordTimer = 0
@@ -153,12 +154,17 @@ export class CalcPanel extends I18nElement {
     if (!this.config || !patrol) return
     const snapshot = this.buildSnapshot()
     if (snapshot.length === 0) return
-    recordShot(snapshot)
+    recordShot(snapshot, getShotMethod())
     this.recorded = true
     window.clearTimeout(this.recordTimer)
     this.recordTimer = window.setTimeout(() => {
       this.recorded = false
     }, 2000)
+  }
+
+  private _setMethod(method: ShotMethod) {
+    setShotMethod(method)
+    this.shotMethod = method
   }
 
   override disconnectedCallback() {
@@ -291,6 +297,24 @@ export class CalcPanel extends I18nElement {
         <div class="calc-grid">${config.controls.map(c => this.renderControl(c))}</div>
         <div class="calc-results">${results.map(r => this.renderResult(r))}</div>
         <div class="record-bar">
+          <span class="method-seg" role="group" aria-label=${this.t('log.methodLabel')}>
+            <button
+              type="button"
+              class="seg ${this.shotMethod === 'calculated' ? 'on' : ''}"
+              ?disabled=${!patrolActive}
+              @click=${() => this._setMethod('calculated')}
+            >
+              ${this.t('log.methodCalculated')}
+            </button>
+            <button
+              type="button"
+              class="seg ${this.shotMethod === 'lead' ? 'on' : ''}"
+              ?disabled=${!patrolActive}
+              @click=${() => this._setMethod('lead')}
+            >
+              ${this.t('log.methodLead')}
+            </button>
+          </span>
           <button
             type="button"
             class="btn btn-accent"
@@ -443,6 +467,49 @@ export class CalcPanel extends I18nElement {
         align-items: center;
         gap: 12px;
         flex-wrap: wrap;
+      }
+
+      .method-seg {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        flex: none;
+      }
+
+      .method-seg .seg {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: var(--text-dim);
+        padding: 9px 14px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition:
+          background 0.15s,
+          color 0.15s;
+      }
+
+      .method-seg .seg + .seg {
+        border-left: 1px solid var(--border);
+      }
+
+      .method-seg .seg:hover:not(:disabled) {
+        color: var(--text);
+      }
+
+      .method-seg .seg.on {
+        background: var(--accent-dim);
+        color: var(--accent);
+        box-shadow: inset 0 0 0 1px var(--accent-border);
+      }
+
+      .method-seg .seg:disabled {
+        opacity: 0.5;
+        cursor: default;
       }
 
       .record-hint {

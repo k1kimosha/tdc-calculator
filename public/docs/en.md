@@ -139,8 +139,10 @@ Each calculator is a set of **controls** (variables) and **formulas**. The tabs 
 
 The **“Log”** tab helps you keep records of your shots' calculated data and, after the match, review your own errors and inaccuracies on the replay.
 
+The patrol status is always visible in the **patrol bar** at the top: while a patrol runs it shows a live stopwatch, the shot count and the **“Record shot”** (snapshot of all calculators from any tab), **“Journal”** and **“Finish”** buttons. Without a patrol there is a **“Start patrol”** button that takes you to the log tab. The **“Log”** tab shows a badge with the number of shots that have no outcome yet.
+
 1. Open the **“Log”** tab and press **“Start patrol”** — a stopwatch starts. Time is counted from the start moment and survives a page reload. You can give the patrol a name and pick your **U-boat** (U-96, U-564, U-552, U-307).
-2. While the patrol runs, press **“Record shot”** on any calculator tab — a snapshot of **all calculators at once** is saved to the log: names, every control value and the formula results at that moment, plus the elapsed time since the patrol started. The collapsible **“Formulas”** block keeps the expressions used for the calculations.
+2. While the patrol runs, press **“Record shot”** on any calculator tab — a snapshot of **all calculators at once** is saved to the log: names, every control value and the formula results at that moment, plus the elapsed time since the patrol started. The collapsible **“Formulas”** block keeps the expressions used for the calculations. Before recording, set the firing method with the **“By calculation” / “On lead”** toggle (available in the header patrol bar and on the calculator panel) — the shot type is stored in the log, the JSON export and the PDF report.
 3. To finish, press **“End patrol”** — the patrol is stored as a separate record: start time, end time and total duration.
 4. After the match, run the **review**: for every shot select the outcome — **hit (one)**, **hit (several)**, **miss (passed ahead)**, **miss (passed behind)**, **hit on another ship** or **not marked** — and optionally add a note. The entered variables, results and formulas are shown next to it, so you can see where your calculation drifted from reality.
 5. The **author nick** is entered in the field at the top of the log and is included in the report.
@@ -157,6 +159,16 @@ The **“Log”** tab helps you keep records of your shots' calculated data and,
 6. **Export/import** — “Export JSON” and “Import JSON” save the whole catalog (including formulas) to a file; “Reset data” restores factory values.
 
 ## Version history
+
+### 1.6
+
+- **Firing method in the log**: before recording a shot you pick the type — **“By calculation”** or **“On lead”** (the toggle lives in the header patrol bar and on the calculator panel); the type is kept on the shot card, in the JSON export and in the PDF report.
+
+### 1.5
+
+- **Patrol bar in the header**: the patrol runtime is visible from any tab — live stopwatch, shot counter and **“Record shot”** (snapshot of all calculators), **“Journal”** and **“Finish”** buttons; the **“Log”** tab shows a badge with the shots awaiting an outcome.
+- **Community links** in the header and footer: GitHub and Discord buttons.
+- **Responsive layout** for different screen sizes (phones, tablets, desktop) and reference tables no longer break — the actions column stays on one line and tables scroll horizontally on narrow screens.
 
 ### 1.4
 

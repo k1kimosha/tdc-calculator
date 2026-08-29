@@ -123,6 +123,13 @@ function shotBlock(s: Shot, i: number, t: TranslateFn, locale: string): Content[
         {
           width: 'auto',
           text: [
+            { text: `${t('log.methodLabel')}: `, style: 'label' },
+            { text: s.method === 'lead' ? t('log.methodLead') : t('log.methodCalculated'), bold: true },
+          ],
+        },
+        {
+          width: 'auto',
+          text: [
             { text: `${t('log.outcomeLabel')}: `, style: 'label' },
             { text: outcomeText, bold: true },
           ],

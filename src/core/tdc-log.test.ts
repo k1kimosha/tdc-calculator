@@ -73,8 +73,17 @@ describe('tdc log', () => {
     expect(shot).not.toBeNull()
     expect(shot!.elapsedMs).toBe(30000)
     expect(shot!.outcome).toBe('none')
+    expect(shot!.method).toBe('calculated')
     expect(shot!.snapshot).toEqual(SNAPSHOT)
     expect(getActivePatrol()!.shots.length).toBe(1)
+  })
+
+  it('records a shot with the chosen firing method', () => {
+    vi.setSystemTime(new Date('2026-01-01T12:00:00Z'))
+    startPatrol()
+    const shot = recordShot(SNAPSHOT, 'lead')!
+    expect(shot.method).toBe('lead')
+    expect(getActivePatrol()!.shots[0].method).toBe('lead')
   })
 
   it('returns null while trying to record without an active patrol', () => {
@@ -217,6 +226,7 @@ describe('tdc log', () => {
     expect(snapshot[0].calcId).toBe('distance')
     expect(snapshot[0].formulas).toEqual([])
     expect(snapshot[0].inputs).toEqual([{ name: 'h', label: 'Высота', value: '20' }])
+    expect(log.patrols[0].shots[0].method).toBe('calculated')
   })
 
   it('formats durations as HH:MM:SS', () => {
