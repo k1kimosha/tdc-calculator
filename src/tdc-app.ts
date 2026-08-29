@@ -5,7 +5,7 @@ import './components/speed-panel.js'
 import './components/aob-panel.js'
 import './components/okane-panel.js'
 import './components/reference-panel.js'
-import { I18nElement, setLocale, type Locale } from './i18n.js'
+import { I18nElement, LOCALE_OPTIONS, setLocale } from './i18n.js'
 
 type Tab = 'distance' | 'speed' | 'aob' | 'okane' | 'reference'
 
@@ -41,7 +41,8 @@ export class TdcApp extends I18nElement {
       max-width: 960px;
       margin: 0 auto;
       padding: 24px 16px 64px;
-      font-family: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: 'Noto Sans', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+        sans-serif;
       font-size: 15px;
       line-height: 1.5;
       color: var(--text);
@@ -81,44 +82,33 @@ export class TdcApp extends I18nElement {
     }
 
     .lang {
-      display: inline-flex;
       flex: none;
       align-self: flex-start;
-      margin-top: 4px;
+      margin-top: 2px;
+      appearance: none;
+      box-sizing: border-box;
+      background: #0a1422;
+      color: var(--text);
       border: 1px solid var(--border);
       border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .lang-btn {
-      appearance: none;
-      border: 0;
-      background: transparent;
-      color: var(--text-dim);
+      padding: 7px 30px 7px 12px;
       font: inherit;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      padding: 6px 12px;
+      font-size: 13px;
       cursor: pointer;
-      border-right: 1px solid var(--border);
-      transition:
-        background 0.15s,
-        color 0.15s;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="%237d93ad" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 10px center;
     }
 
-    .lang-btn:last-child {
-      border-right: 0;
+    .lang:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
     }
 
-    .lang-btn:hover {
+    .lang option {
+      background: var(--panel);
       color: var(--text);
-    }
-
-    .lang-btn.active {
-      background: var(--accent-dim);
-      color: var(--text);
-      box-shadow: inset 0 -2px 0 var(--accent);
     }
 
     .tabs {
@@ -212,20 +202,17 @@ export class TdcApp extends I18nElement {
           <h1>${this.t('app.title')}</h1>
           <p class="subtitle">${this.t('app.subtitle')}</p>
         </div>
-        <div class="lang" role="group" aria-label=${this.t('app.lang.label')}>
-          ${(['ru', 'en'] as Locale[]).map(
-            l => html`
-              <button
-                type="button"
-                class="lang-btn ${this.locale === l ? 'active' : ''}"
-                aria-pressed=${this.locale === l}
-                @click=${() => setLocale(l)}
-              >
-                ${this.t(`app.lang.${l}`)}
-              </button>
+        <select
+          class="lang"
+          aria-label=${this.t('app.lang.label')}
+          @change=${(e: Event) => setLocale((e.target as HTMLSelectElement).value)}
+        >
+          ${LOCALE_OPTIONS.map(
+            o => html`
+              <option value=${o.code} ?selected=${this.locale === o.code}>${o.label}</option>
             `,
           )}
-        </div>
+        </select>
       </header>
 
       <nav class="tabs" role="tablist" aria-label=${this.t('app.tabs.aria')}>

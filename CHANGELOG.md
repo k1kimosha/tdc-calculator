@@ -10,7 +10,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] / [Без релиза]
 
-Пока без изменений. / Nothing here yet.
+### Добавлено
+
+- Система i18n переработана: каждый язык в отдельном файле (`src/locales/ru.ts`, `src/locales/en.ts`), переключение через выпадающий список в шапке, автоопределение языка браузера при открытии (с фолбэком на английский), сохранение выбора между сессиями, ускоренный поиск переводов через плоский индекс
+- Подключены локальные шрифты **Noto Sans** (Google Fonts): файлы TTF лежат в `public/fonts/`, все 8 граней (400/500/600/700 + курсив) зарегистрированы через `@font-face` в `src/index.css` — шрифт раздаётся файлами из статики, без внешних запросов. Там же лежат китайские и японские грань (JP/SC/TC) про запас, в CSS пока не подключены
+
+### Added
+
+- i18n system reworked: each language lives in its own file (`src/locales/ru.ts`, `src/locales/en.ts`), switching via a dropdown in the header, automatic browser-language detection on load (falling back to English), preference kept between sessions, faster lookup through a flattened translation index
+- Local **Noto Sans** (Google Fonts) fonts wired up: TTF files live in `public/fonts/`, all 8 faces (400/500/600/700 + italic variants) are registered via `@font-face` in `src/index.css` — fonts are served as static files with no external requests. Chinese and Japanese faces (JP/SC/TC) are also stored there for the future, not yet wired into CSS
 
 ## [0.1.1] — 2026-08-29
 
