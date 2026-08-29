@@ -12,25 +12,38 @@ export type Locale = string
 
 export type MessageParams = Record<string, string | number>
 
-const STORAGE_KEY = 'tdc-locale'
+export const STORAGE_KEY = 'tdc-locale'
 
-function browserLocale(): string {
-  if (typeof navigator === 'undefined') return DEFAULT_LOCALE
-  const base = (navigator.language || '').split('-')[0].toLowerCase()
+export function langFromNavigator(navLang: string | undefined): string {
+  if (!navLang) return DEFAULT_LOCALE
+  const base = navLang.split('-')[0].toLowerCase()
   return isSupportedLocale(base) ? base : DEFAULT_LOCALE
 }
 
-function resolveInitialLocale(): string {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored && isSupportedLocale(stored)) return stored
-  } catch {
-    /* ignore */
-  }
-  return browserLocale()
+export function resolveInitialLocale(
+  stored: string | null,
+  navLang: string | undefined,
+): string {
+  if (stored && isSupportedLocale(stored)) return stored
+  return langFromNavigator(navLang)
 }
 
-let currentLocale: Locale = resolveInitialLocale()
+function readStoredLocale(): string | null {
+  try {
+    return typeof localStorage === 'undefined'
+      ? null
+      : localStorage.getItem(STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+let currentLocale: Locale = resolveInitialLocale(
+  readStoredLocale(),
+  typeof navigator === 'undefined'
+    ? undefined
+    : navigator.language,
+)
 
 document.documentElement.lang = currentLocale
 
@@ -45,6 +58,7 @@ export function setLocale(locale: Locale) {
   if (locale === currentLocale) return
   currentLocale = locale
   document.documentElement.lang = locale
+  document.title = translate(locale, 'app.title')
   try {
     localStorage.setItem(STORAGE_KEY, locale)
   } catch {
@@ -119,3 +133,5 @@ export class I18nElement extends LitElement {
     return translate(this.locale, key, params)
   }
 }
+
+document.title = translate(currentLocale, 'app.title')
