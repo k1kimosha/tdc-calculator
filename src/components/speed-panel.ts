@@ -1,9 +1,12 @@
 import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { formatNumber, shipClassName, speedKnots, type ShipClass } from '../tdc-data.js'
-import { getShips } from '../tdc-store.js'
+import { formatNumber, shipClassName, type ShipClass } from '../tdc-data.js'
+import { compileFormulas, evaluateOrNull } from '../formula-engine.js'
+import { getFormulas, getShips } from '../tdc-store.js'
 import { I18nElement } from '../i18n.js'
 import { formStyles } from '../shared-styles.js'
+
+const SPEED_TABLE = [6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36]
 
 function toNumber(value: string): number {
   const n = value.replace(',', '.')
@@ -32,16 +35,25 @@ export class SpeedPanel extends I18nElement {
     const len = toNumber(this.lengthText)
     const sec = toNumber(this.secondsText)
     const { locale } = this
-    const speed = len > 0 && sec > 0 ? speedKnots(len, sec) : null
+    const formulas = getFormulas('speed')
+    const compiled = compileFormulas({
+      speed: formulas['speed'] ?? 'l/t*1.94',
+      transit: formulas['transit'] ?? 'l*1.94/spd',
+    })
+    const speedFn = compiled.fns['speed']
+    const transitFn = compiled.fns['transit']
+    const speed = len > 0 && sec > 0 ? evaluateOrNull(speedFn, { l: len, t: sec }) : null
 
     const formula =
-      speed !== null
-        ? this.t('speed.formula.value', {
-            l: formatNumber(len, 2, locale),
-            t: formatNumber(sec, 2, locale),
-            s: formatNumber(speed, 2, locale),
-          })
-        : this.t('speed.formula.empty')
+      compiled.error
+        ? this.t('calcs.invalid', { error: compiled.error })
+        : speed !== null
+          ? this.t('speed.formula.value', {
+              l: formatNumber(len, 2, locale),
+              t: formatNumber(sec, 2, locale),
+              s: formatNumber(speed, 2, locale),
+            })
+          : this.t('speed.formula.empty')
 
     return html`
       <section class="panel">
@@ -109,8 +121,8 @@ export class SpeedPanel extends I18nElement {
               </tr>
             </thead>
             <tbody>
-              ${[6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36].map(spd => {
-                const t = len > 0 ? (len * 1.94) / spd : null
+              ${SPEED_TABLE.map(spd => {
+                const t = len > 0 ? evaluateOrNull(transitFn, { l: len, spd }) : null
                 return html`
                   <tr>
                     <td>${spd}</td>

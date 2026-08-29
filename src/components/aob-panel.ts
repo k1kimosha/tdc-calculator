@@ -1,15 +1,8 @@
 import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import {
-  aobFromVisibleLength,
-  formatNumber,
-  rizkiFromVisibleMeters,
-  shipClassName,
-  visibleLengthFromAob,
-  visibleMetersFromRizki,
-  type ShipClass,
-} from '../tdc-data.js'
-import { getShips } from '../tdc-store.js'
+import { formatNumber, shipClassName, type ShipClass } from '../tdc-data.js'
+import { compileFormulas, evaluateOrNull } from '../formula-engine.js'
+import { getFormulas, getShips } from '../tdc-store.js'
 import { I18nElement } from '../i18n.js'
 import { formStyles, segmentStyles, tableStyles } from '../shared-styles.js'
 
@@ -55,17 +48,29 @@ export class AobPanel extends I18nElement {
     const aobIn = toNumber(this.aobText)
     const { locale } = this
 
+    const formulas = getFormulas('aob')
+    const compiled = compileFormulas({
+      visRizki: formulas['visRizki'] ?? 'r*d/1000',
+      aob: formulas['aob'] ?? 'asin(v/l)*180/pi',
+      visAob: formulas['visAob'] ?? 'l*sin(a*pi/180)',
+      rizki: formulas['rizki'] ?? 'v*1000/d',
+    })
+    const visRizkiFn = compiled.fns['visRizki']
+    const aobFn = compiled.fns['aob']
+    const visAobFn = compiled.fns['visAob']
+    const rizkiFn = compiled.fns['rizki']
+
     let visible: number | null = null
     let aobOut: number | null = null
     let rizkiOut: number | null = null
 
     if (isRizkiMode) {
-      if (D > 0 && rizki > 0) visible = visibleMetersFromRizki(rizki, D)
-      if (L > 0 && visible !== null && visible > 0) aobOut = aobFromVisibleLength(visible, L)
+      if (D > 0 && rizki > 0) visible = evaluateOrNull(visRizkiFn, { r: rizki, d: D, l: L, v: 0, a: 0 })
+      if (L > 0 && visible !== null && visible > 0) aobOut = evaluateOrNull(aobFn, { v: visible, l: L, r: rizki, d: D, a: 0 })
     } else {
       if (L > 0 && aobIn > 0) {
-        visible = visibleLengthFromAob(aobIn, L)
-        if (D > 0) rizkiOut = rizkiFromVisibleMeters(visible, D)
+        visible = evaluateOrNull(visAobFn, { a: aobIn, l: L, r: rizki, d: D, v: 0 })
+        if (D > 0) rizkiOut = evaluateOrNull(rizkiFn, { v: visible ?? 0, d: D, r: rizki, l: L, a: aobIn })
       }
     }
 
@@ -80,8 +85,10 @@ export class AobPanel extends I18nElement {
     const aobDisplay = aobOut !== null ? `${formatNumber(aobOut, 1, locale)}° ${sideLabel}` : '—'
 
     const formula =
-      isRizkiMode && (aobOut !== null || visible !== null)
-        ? this.t('aob.formula.byVisible', {
+      compiled.error
+        ? this.t('calcs.invalid', { error: compiled.error })
+        : isRizkiMode && (aobOut !== null || visible !== null)
+          ? this.t('aob.formula.byVisible', {
             r: formatNumber(rizki, 2, locale),
             d: formatNumber(D, 0, locale),
             v: formatNumber(visible ?? 0, 1, locale),
@@ -245,8 +252,8 @@ export class AobPanel extends I18nElement {
             </thead>
             <tbody>
               ${AOB_TABLE.map(a => {
-                const vis = L > 0 ? visibleLengthFromAob(a, L) : null
-                const r = vis !== null && D > 0 ? rizkiFromVisibleMeters(vis, D) : null
+                const vis = L > 0 ? evaluateOrNull(visAobFn, { a, l: L, r: rizki, d: D, v: 0 }) : null
+                const r = vis !== null && D > 0 ? evaluateOrNull(rizkiFn, { v: vis, d: D, r: rizki, l: L, a }) : null
                 const active =
                   (isRizkiMode && aobOut !== null && Math.abs(a - aobOut) < 0.5) ||
                   (!isRizkiMode && Math.abs(a - aobIn) < 0.5)

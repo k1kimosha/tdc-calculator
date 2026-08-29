@@ -248,6 +248,59 @@ export function rizkiFromVisibleMeters(visible: number, distance: number): numbe
   return (visible * 1000) / distance
 }
 
+export const CALC_IDS = ['distance', 'speed', 'aob', 'okane'] as const
+
+export type CalculatorId = (typeof CALC_IDS)[number]
+
+export interface CalcFormula {
+  id: string
+  expr: string
+}
+
+export interface CalculatorConfig {
+  id: CalculatorId
+  formulas: CalcFormula[]
+}
+
+export const DEFAULT_CALCS: CalculatorConfig[] = [
+  {
+    id: 'distance',
+    formulas: [
+      { id: 'dist', expr: 'h*k/r' },
+      { id: 'rizki', expr: 'h*k/d' },
+    ],
+  },
+  {
+    id: 'speed',
+    formulas: [
+      { id: 'speed', expr: 'l/t*1.94' },
+      { id: 'transit', expr: 'l*1.94/spd' },
+    ],
+  },
+  {
+    id: 'aob',
+    formulas: [
+      { id: 'visRizki', expr: 'r*d/1000' },
+      { id: 'aob', expr: 'asin(v/l)*180/pi' },
+      { id: 'visAob', expr: 'l*sin(a*pi/180)' },
+      { id: 'rizki', expr: 'v*1000/d' },
+    ],
+  },
+  {
+    id: 'okane',
+    formulas: [
+      { id: 'lead', expr: 'atan(vt/vs)*180/pi' },
+      { id: 'leadGen', expr: 'asin(vt/vs*sin(aob*pi/180))*180/pi' },
+      { id: 'trackAngle', expr: '180-aob-lead' },
+      { id: 'runTime', expr: 'd/(vs*c)' },
+    ],
+  },
+]
+
+export function defaultFormulasFor(id: CalculatorId): CalcFormula[] {
+  return DEFAULT_CALCS.find(c => c.id === id)?.formulas ?? []
+}
+
 export const IDENTIFICATION_METHODS: IdentificationMethod[] = [
   {
     title: {

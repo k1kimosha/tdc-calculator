@@ -5,6 +5,8 @@ import {
   STORAGE_KEY,
   catalogFileName,
   exportCatalogJson,
+  getCalcs,
+  getFormulas,
   getNotes,
   getScenarios,
   getShips,
@@ -15,6 +17,7 @@ import {
   removeShip,
   resetCatalog,
   subscribeCatalog,
+  upsertCalculator,
   upsertNote,
   upsertScenario,
   upsertShip,
@@ -154,6 +157,55 @@ describe('CRUD scenarios and notes', () => {
     upsertNote(defaultNote({ body: 'Изменено' }))
     expect(getShips().length).toBe(4)
     expect(getNotes().length).toBe(1)
+  })
+})
+
+describe('catalog calculators', () => {
+  it('seeds all four calculators with default formulas', () => {
+    const calcs = getCalcs()
+    expect(calcs.map(c => c.id)).toEqual(['distance', 'speed', 'aob', 'okane'])
+    const dist = calcs.find(c => c.id === 'distance')!
+    expect(dist.formulas.find(f => f.id === 'dist')?.expr).toBe('h*k/r')
+    expect(dist.formulas.find(f => f.id === 'rizki')?.expr).toBe('h*k/d')
+  })
+
+  it('getFormulas falls back to defaults for a calculator', () => {
+    expect(getFormulas('distance').dist).toBe('h*k/r')
+    expect(getFormulas('aob').aob).toBe('asin(v/l)*180/pi')
+    expect(getFormulas('okane').runTime).toBe('d/(vs*c)')
+  })
+
+  it('upserts a calculator and persists the change', () => {
+    upsertCalculator({
+      id: 'distance',
+      formulas: [
+        { id: 'dist', expr: 'h*K/r' },
+        { id: 'rizki', expr: 'h*K/d' },
+      ],
+    })
+    expect(getFormulas('distance').dist).toBe('h*K/r')
+    expect(getCalcs().find(c => c.id === 'distance')!.formulas).toHaveLength(2)
+  })
+
+  it('includes calculators in export and restores them on import', () => {
+    upsertCalculator({ id: 'distance', formulas: [{ id: 'dist', expr: 'h*K/r' }, { id: 'rizki', expr: 'h*k/d' }] })
+    const json = exportCatalogJson()
+    const parsed = JSON.parse(json)
+    expect(Array.isArray(parsed.calcs)).toBe(true)
+    importCatalogJson(json)
+    expect(getFormulas('distance').dist).toBe('h*K/r')
+  })
+
+  it('fills calculator defaults when the imported file has none', () => {
+    const json = JSON.stringify({
+      version: 1,
+      ships: [],
+      scenarios: [],
+      calcs: [],
+      notes: [],
+    })
+    expect(importCatalogJson(json)).toEqual({ ok: true })
+    expect(getFormulas('speed').speed).toBe('l/t*1.94')
   })
 })
 

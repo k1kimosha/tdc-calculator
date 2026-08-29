@@ -1,13 +1,19 @@
 import {
+  DEFAULT_CALCS,
   DEFAULT_SCENARIOS,
   DEFAULT_SHIPS,
+  CALC_IDS,
+  defaultFormulasFor,
+  type CalcFormula,
+  type CalculatorConfig,
+  type CalculatorId,
   type Scenario,
   type ScenarioMode,
   type ShipClass,
 } from './tdc-data.js'
 
 export const STORAGE_KEY = 'tdc-catalog'
-export const CATALOG_VERSION = 1
+export const CATALOG_VERSION = 2
 
 export const NOTE_CATEGORIES = ['tdc', 'identification', 'general'] as const
 export type NoteCategory = (typeof NOTE_CATEGORIES)[number]
@@ -23,6 +29,7 @@ export interface TdcCatalog {
   version: number
   ships: ShipClass[]
   scenarios: Scenario[]
+  calcs: CalculatorConfig[]
   notes: Note[]
 }
 
@@ -37,6 +44,7 @@ function defaultCatalog(): TdcCatalog {
     version: CATALOG_VERSION,
     ships: clone(DEFAULT_SHIPS),
     scenarios: clone(DEFAULT_SCENARIOS),
+    calcs: clone(DEFAULT_CALCS),
     notes: [],
   }
 }
@@ -82,8 +90,29 @@ function normalizeCatalogShape(value: unknown): TdcCatalog | null {
     version: CATALOG_VERSION,
     ships,
     scenarios,
+    calcs: normalizeCalcs(record.calcs),
     notes,
   }
+}
+
+function normalizeCalcs(value: unknown): CalculatorConfig[] {
+  const raw = Array.isArray(value) ? value : []
+  const result: CalculatorConfig[] = []
+  for (const id of CALC_IDS) {
+    const entry = raw.find(
+      c => c && typeof c === 'object' && (c as Record<string, unknown>).id === id,
+    ) as Record<string, unknown> | undefined
+    const rawFormulas = Array.isArray(entry?.formulas) ? (entry.formulas as unknown[]) : []
+    const formulas: CalcFormula[] = defaultFormulasFor(id).map(def => {
+      const match = rawFormulas.find(
+        f => f && typeof f === 'object' && (f as Record<string, unknown>).id === def.id,
+      )
+      const expr = match ? (match as Record<string, unknown>).expr : undefined
+      return { id: def.id, expr: asStr(expr, def.expr) }
+    })
+    result.push({ id, formulas })
+  }
+  return result
 }
 
 export function newId(prefix: string): string {
@@ -205,6 +234,27 @@ export function getNotes(): Note[] {
   return readCatalog().notes
 }
 
+export function getCalcs(): CalculatorConfig[] {
+  return readCatalog().calcs
+}
+
+export function getFormulas(id: CalculatorId): Record<string, string> {
+  const config = readCatalog().calcs.find(c => c.id === id)
+  const list = config?.formulas.length ? config.formulas : defaultFormulasFor(id)
+  const out: Record<string, string> = {}
+  for (const f of list) out[f.id] = f.expr
+  return out
+}
+
+export function upsertCalculator(config: CalculatorConfig) {
+  updateCatalog(catalog => {
+    const index = catalog.calcs.findIndex(c => c.id === config.id)
+    const entry = clone(config)
+    if (index >= 0) catalog.calcs[index] = entry
+    else catalog.calcs.push(entry)
+  })
+}
+
 function updateCatalog(mutate: (catalog: TdcCatalog) => void) {
   const catalog = readCatalog()
   mutate(catalog)
@@ -260,8 +310,8 @@ export function resetCatalog() {
 }
 
 export function exportCatalogJson(): string {
-  const { version, ships, scenarios, notes } = readCatalog()
-  return JSON.stringify({ version, ships, scenarios, notes }, null, 2)
+  const { version, ships, scenarios, calcs, notes } = readCatalog()
+  return JSON.stringify({ version, ships, scenarios, calcs, notes }, null, 2)
 }
 
 export function catalogFileName(): string {
