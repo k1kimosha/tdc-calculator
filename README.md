@@ -7,6 +7,8 @@ Computes target range, speed and angle on the bow from periscope ticks ("рис�
 
 ## Features
 
+- Interface in Russian and English with a language switch in the header (RU/EN)
+
 **Range**
 - Range from target height: `H × K ÷ ticks`
 - Magnifications: standard ×1.5 (K = 92.5) and approach ×6 (K = 366)

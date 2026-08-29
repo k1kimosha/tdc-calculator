@@ -1,4 +1,4 @@
-import { LitElement, css, html } from 'lit'
+import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import {
   TORPEDO_SPEEDS,
@@ -8,6 +8,7 @@ import {
   torpedoRunSeconds,
   trackAngleDeg,
 } from '../tdc-data.js'
+import { I18nElement } from '../i18n.js'
 import { formStyles } from '../shared-styles.js'
 
 function toNumber(value: string): number {
@@ -17,15 +18,18 @@ function toNumber(value: string): number {
   return Number.isFinite(v) ? v : 0
 }
 
-function formatRunTime(seconds: number): string {
+function formatRunTime(seconds: number, t: (key: string, params?: Record<string, string | number>) => string): string {
   const s = Math.round(seconds)
   const m = Math.floor(s / 60)
   const rest = s % 60
-  return m > 0 ? `${s} с (≈ ${m} мин ${rest} с)` : `${s} с`
+  if (m > 0) {
+    return `${s} ${t('okane.run.sec')} (${t('okane.run.approx')} ${m} ${t('okane.run.min')} ${rest} ${t('okane.run.sec')})`
+  }
+  return `${s} ${t('okane.run.sec')}`
 }
 
 @customElement('tdc-okane-panel')
-export class OkanePanel extends LitElement {
+export class OkanePanel extends I18nElement {
   @state() private vtText = '8'
   @state() private vsId = 't40'
   @state() private vsText = '40'
@@ -45,6 +49,7 @@ export class OkanePanel extends LitElement {
     const vs = this.isManualVs ? toNumber(this.vsText) : (this.torpedoPresetKnots ?? 0)
     const D = toNumber(this.distText)
     const aob = toNumber(this.aobText)
+    const { locale } = this
 
     const beta = vs > 0 ? okaneLeadDeg(vt, vs) : null
     const aobFire = beta !== null ? 90 - beta : null
@@ -56,15 +61,12 @@ export class OkanePanel extends LitElement {
 
     return html`
       <section class="panel">
-        <h2 class="panel-title">Метод Дика О'Кейна</h2>
-        <p class="hint">
-          Лодка стоит перпендикулярно курсу цели. В TDC выставляется КУЦ 90° (П/Л по борту), вводится
-          скорость цели. Ждите, пока цель не подойдёт на упреждение β к траверзу, и стреляйте прямым ходом.
-        </p>
+        <h2 class="panel-title">${this.t('okane.title')}</h2>
+        <p class="hint">${this.t('okane.intro')}</p>
 
         <div class="form-grid">
           <div class="field">
-            <label class="field-label" for="vt">Скорость цели, уз</label>
+            <label class="field-label" for="vt">${this.t('okane.vt.label')}</label>
             <input
               id="vt"
               type="number"
@@ -73,18 +75,18 @@ export class OkanePanel extends LitElement {
               .value=${this.vtText}
               @input=${(e: Event) => (this.vtText = (e.target as HTMLInputElement).value)}
             />
-            <span class="field-hint">Замерьте на вкладке «Скорость»</span>
+            <span class="field-hint">${this.t('okane.vt.hint')}</span>
           </div>
 
           <div class="field">
-            <label class="field-label" for="vs">Скорость торпеды</label>
+            <label class="field-label" for="vs">${this.t('okane.vs.label')}</label>
             <select id="vs" @change=${(e: Event) => (this.vsId = (e.target as HTMLSelectElement).value)}>
               ${TORPEDO_SPEEDS.map(
                 t => html`
-                  <option value=${t.id} ?selected=${this.vsId === t.id}>${t.label}</option>
+                  <option value=${t.id} ?selected=${this.vsId === t.id}>${t.label[locale]}</option>
                 `,
               )}
-              <option value="manual" ?selected=${this.vsId === 'manual'}>Вручную</option>
+              <option value="manual" ?selected=${this.vsId === 'manual'}>${this.t('okane.vs.manual')}</option>
             </select>
             ${this.isManualVs
               ? html`
@@ -94,49 +96,50 @@ export class OkanePanel extends LitElement {
                     min="0"
                     .value=${this.vsText}
                     @input=${(e: Event) => (this.vsText = (e.target as HTMLInputElement).value)}
-                    aria-label="Скорость торпеды, уз"
+                    aria-label=${this.t('okane.vs.aria')}
                   />
                 `
-              : html`<span class="field-hint">${formatNumber(vs)} уз</span>`}
+              : html`<span class="field-hint">${this.t('okane.vs.hint', { k: formatNumber(vs, 2, locale) })}</span>`}
           </div>
         </div>
 
         <div class="kv">
           <div class="kv-row">
-            <span class="kv-k">Угол упреждения β = arctan(Vt ÷ Vs)</span>
-            <span class="kv-v">${beta !== null ? `${formatNumber(beta, 1)}°` : '—'}</span>
+            <span class="kv-k">${this.t('okane.kv.beta')}</span>
+            <span class="kv-v">${beta !== null ? `${formatNumber(beta, 1, locale)}°` : '—'}</span>
           </div>
           <div class="kv-row">
-            <span class="kv-k">Пеленг на выстрел (от носа)</span>
-            <span class="kv-v">${beta !== null ? `${formatNumber(beta, 1)}° в сторону движения цели` : '—'}</span>
+            <span class="kv-k">${this.t('okane.kv.bearing')}</span>
+            <span class="kv-v">${beta !== null ? this.t('okane.kv.bearingValue', { b: formatNumber(beta, 1, locale) }) : '—'}</span>
           </div>
           <div class="kv-row">
-            <span class="kv-k">КУЦ цели на момент выстрела</span>
-            <span class="kv-v">${aobFire !== null ? `${formatNumber(aobFire, 1)}°` : '—'}</span>
+            <span class="kv-k">${this.t('okane.kv.aobFire')}</span>
+            <span class="kv-v">${aobFire !== null ? `${formatNumber(aobFire, 1, locale)}°` : '—'}</span>
           </div>
         </div>
 
         <div class="result">
-          <div class="result-caption">Держите упреждение</div>
-          <div class="result-value">${beta !== null ? `${formatNumber(beta, 1)}°` : '—'}</div>
+          <div class="result-caption">${this.t('okane.result.caption')}</div>
+          <div class="result-value">${beta !== null ? `${formatNumber(beta, 1, locale)}°` : '—'}</div>
           <div class="result-formula">
             ${beta !== null
-              ? `β = arctan(${formatNumber(vt)} ÷ ${formatNumber(vs)}) = ${formatNumber(beta, 1)}°`
-              : 'Введите скорости цели и торпеды'}
+              ? this.t('okane.result.formula', {
+                  vt: formatNumber(vt, 2, locale),
+                  vs: formatNumber(vs, 2, locale),
+                  b: formatNumber(beta, 1, locale),
+                })
+              : this.t('okane.result.empty')}
           </div>
         </div>
       </section>
 
       <section class="panel">
-        <h2 class="panel-title">Общий случай упреждения</h2>
-        <p class="hint">
-          Если цель не на траверзе: входные данные — текущий КУЦ (AOB) на момент выстрела.
-          Угол встречи (TTA) — угол между курсом цели и ходом торпеды в точке встречи.
-        </p>
+        <h2 class="panel-title">${this.t('okane.general.title')}</h2>
+        <p class="hint">${this.t('okane.general.intro')}</p>
 
         <div class="form-grid">
           <div class="field">
-            <label class="field-label" for="aob">КУЦ цели на момент выстрела, °</label>
+            <label class="field-label" for="aob">${this.t('okane.general.aobLabel')}</label>
             <input
               id="aob"
               type="number"
@@ -146,27 +149,31 @@ export class OkanePanel extends LitElement {
               .value=${this.aobText}
               @input=${(e: Event) => (this.aobText = (e.target as HTMLInputElement).value)}
             />
-            <span class="field-hint">Острый (&lt;90°) — идёт навстречу, тупой — отворачивает</span>
+            <span class="field-hint">${this.t('okane.general.aobHint')}</span>
           </div>
         </div>
 
         <div class="result">
-          <div class="result-caption">Угол упреждения β = arcsin((Vt ÷ Vs) × sin(КУЦ))</div>
-          <div class="result-value">${generalLead !== null ? `${formatNumber(generalLead, 1)}°` : '—'}</div>
+          <div class="result-caption">${this.t('okane.general.caption')}</div>
+          <div class="result-value">${generalLead !== null ? `${formatNumber(generalLead, 1, locale)}°` : '—'}</div>
           <div class="result-formula">
             ${generalLead !== null && tta !== null
-              ? `β = ${formatNumber(generalLead, 1)}° · угол встречи TTA = 180° − ${formatNumber(aob, 1)}° − ${formatNumber(generalLead, 1)}° = ${formatNumber(tta, 1)}°`
-              : 'Введите КУЦ и скорости'}
+              ? this.t('okane.general.formula', {
+                  b: formatNumber(generalLead, 1, locale),
+                  a: formatNumber(aob, 1, locale),
+                  tta: formatNumber(tta, 1, locale),
+                })
+              : this.t('okane.general.empty')}
           </div>
         </div>
       </section>
 
       <section class="panel">
-        <h2 class="panel-title">Время хода торпеды</h2>
+        <h2 class="panel-title">${this.t('okane.run.title')}</h2>
 
         <div class="form-grid">
           <div class="field">
-            <label class="field-label" for="dist">Дистанция до цели, м</label>
+            <label class="field-label" for="dist">${this.t('okane.run.distLabel')}</label>
             <input
               id="dist"
               type="number"
@@ -175,17 +182,21 @@ export class OkanePanel extends LitElement {
               .value=${this.distText}
               @input=${(e: Event) => (this.distText = (e.target as HTMLInputElement).value)}
             />
-            <span class="field-hint">С вкладки «Дистанция»</span>
+            <span class="field-hint">${this.t('okane.run.distHint')}</span>
           </div>
         </div>
 
         <div class="result">
-          <div class="result-caption">Время хода торпеды</div>
-          <div class="result-value">${runTime !== null ? formatRunTime(runTime) : '—'}</div>
+          <div class="result-caption">${this.t('okane.run.caption')}</div>
+          <div class="result-value">${runTime !== null ? formatRunTime(runTime, (k, p) => this.t(k, p)) : '—'}</div>
           <div class="result-formula">
             ${runTime !== null
-              ? `${formatNumber(D)} м ÷ (${formatNumber(vs)} уз × 0,5144) = ${formatNumber(runTime, 0)} с`
-              : 'Введите дистанцию и скорость торпеды'}
+              ? this.t('okane.run.formula', {
+                  d: formatNumber(D, 0, locale),
+                  vs: formatNumber(vs, 2, locale),
+                  t: formatNumber(runTime, 0, locale),
+                })
+              : this.t('okane.run.empty')}
           </div>
         </div>
       </section>

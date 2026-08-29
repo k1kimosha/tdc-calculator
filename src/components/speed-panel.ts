@@ -1,6 +1,7 @@
-import { LitElement, css, html } from 'lit'
+import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { WARSHIPS, formatNumber, speedKnots, type ShipClass } from '../tdc-data.js'
+import { WARSHIPS, formatNumber, shipClassName, speedKnots, type ShipClass } from '../tdc-data.js'
+import { I18nElement } from '../i18n.js'
 import { formStyles } from '../shared-styles.js'
 
 function toNumber(value: string): number {
@@ -11,7 +12,7 @@ function toNumber(value: string): number {
 }
 
 @customElement('tdc-speed-panel')
-export class SpeedPanel extends LitElement {
+export class SpeedPanel extends I18nElement {
   @state() private shipId = 'tribal'
   @state() private lengthText = '115'
   @state() private secondsText = '40'
@@ -29,35 +30,40 @@ export class SpeedPanel extends LitElement {
   render() {
     const len = toNumber(this.lengthText)
     const sec = toNumber(this.secondsText)
+    const { locale } = this
     const speed = len > 0 && sec > 0 ? speedKnots(len, sec) : null
 
     const formula =
       speed !== null
-        ? `${formatNumber(len)} м ÷ ${formatNumber(sec)} с × 1,94 = ${formatNumber(speed)} уз`
-        : 'Укажите длину цели и время прохода'
+        ? this.t('speed.formula.value', {
+            l: formatNumber(len, 2, locale),
+            t: formatNumber(sec, 2, locale),
+            s: formatNumber(speed, 2, locale),
+          })
+        : this.t('speed.formula.empty')
 
     return html`
       <section class="panel">
-        <h2 class="panel-title">Скорость цели</h2>
+        <h2 class="panel-title">${this.t('speed.title')}</h2>
 
         <div class="form-grid">
           <div class="field">
-            <label class="field-label" for="ship">Тип цели</label>
+            <label class="field-label" for="ship">${this.t('speed.ship.label')}</label>
             <select id="ship" @change=${this._onShipChange}>
-              <option value="" ?selected=${this.shipId === ''}>Ручной ввод</option>
+              <option value="" ?selected=${this.shipId === ''}>${this.t('speed.ship.manual')}</option>
               ${WARSHIPS.map(
                 s => html`
-                  <option value=${s.id} ?selected=${this.shipId === s.id}>${s.nameRu}</option>
+                  <option value=${s.id} ?selected=${this.shipId === s.id}>${shipClassName(s, locale)}</option>
                 `,
               )}
             </select>
             ${this.selectedShip
-              ? html`<span class="field-hint">${this.selectedShip.nameEn} · длина по справочнику ${this.selectedShip.length} м</span>`
-              : html`<span class="field-hint">Введите длину цели вручную</span>`}
+              ? html`<span class="field-hint">${this.t('speed.ship.hint', { en: this.selectedShip.nameEn, len: this.selectedShip.length })}</span>`
+              : html`<span class="field-hint">${this.t('speed.ship.manualHint')}</span>`}
           </div>
 
           <div class="field">
-            <label class="field-label" for="length">Длина цели, м</label>
+            <label class="field-label" for="length">${this.t('speed.length.label')}</label>
             <input
               id="length"
               type="number"
@@ -66,11 +72,11 @@ export class SpeedPanel extends LitElement {
               .value=${this.lengthText}
               @input=${(e: Event) => (this.lengthText = (e.target as HTMLInputElement).value)}
             />
-            <span class="field-hint">По справочнику · можно править</span>
+            <span class="field-hint">${this.t('speed.length.hint')}</span>
           </div>
 
           <div class="field">
-            <label class="field-label" for="seconds">Время прохода нос–корма, с</label>
+            <label class="field-label" for="seconds">${this.t('speed.time.label')}</label>
             <input
               id="seconds"
               type="number"
@@ -79,26 +85,26 @@ export class SpeedPanel extends LitElement {
               .value=${this.secondsText}
               @input=${(e: Event) => (this.secondsText = (e.target as HTMLInputElement).value)}
             />
-            <span class="field-hint">За какое время силуэт прошёл от носа до кормы</span>
+            <span class="field-hint">${this.t('speed.time.hint')}</span>
           </div>
         </div>
 
         <div class="result">
-          <div class="result-caption">Скорость цели</div>
-          <div class="result-value">${speed !== null ? `${formatNumber(speed)} уз` : '—'}</div>
+          <div class="result-caption">${this.t('speed.result.caption')}</div>
+          <div class="result-value">${speed !== null ? `${formatNumber(speed, 2, locale)} ${this.t('units.knotsShort')}` : '—'}</div>
           <div class="result-formula">${formula}</div>
         </div>
       </section>
 
       <section class="panel">
-        <h2 class="panel-title">Быстрый подбор времени</h2>
-        <p class="hint">Время прохода нос–корма для длины цели и нужной скорости (уз)</p>
+        <h2 class="panel-title">${this.t('speed.table.title')}</h2>
+        <p class="hint">${this.t('speed.table.hint')}</p>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Скорость, уз</th>
-                <th class="num">Время, с (для этой длины)</th>
+                <th>${this.t('speed.table.colSpeed')}</th>
+                <th class="num">${this.t('speed.table.colTime')}</th>
               </tr>
             </thead>
             <tbody>
@@ -107,7 +113,7 @@ export class SpeedPanel extends LitElement {
                 return html`
                   <tr>
                     <td>${spd}</td>
-                    <td class="num">${t !== null ? formatNumber(t, 1) : '—'}</td>
+                    <td class="num">${t !== null ? formatNumber(t, 1, locale) : '—'}</td>
                   </tr>
                 `
               })}

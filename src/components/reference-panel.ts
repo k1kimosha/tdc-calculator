@@ -1,4 +1,4 @@
-import { LitElement, css, html } from 'lit'
+import { css, html } from 'lit'
 import { customElement } from 'lit/decorators.js'
 import {
   IDENTIFICATION_INTRO,
@@ -6,23 +6,25 @@ import {
   SAFE_SCENARIOS,
   WARSHIPS,
 } from '../tdc-data.js'
+import { I18nElement } from '../i18n.js'
 import { tableStyles } from '../shared-styles.js'
 
 @customElement('tdc-reference-panel')
-export class ReferencePanel extends LitElement {
+export class ReferencePanel extends I18nElement {
   render() {
+    const { locale } = this
     return html`
       <section class="panel">
-        <h2 class="panel-title">Параметры военных кораблей</h2>
+        <h2 class="panel-title">${this.t('reference.ships.title')}</h2>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Класс</th>
-                <th class="num">Длина, м</th>
-                <th class="num">Мачта / труба, м</th>
-                <th class="num">Осадка, м</th>
-                <th class="num">Скорость, уз</th>
+                <th>${this.t('reference.ships.colClass')}</th>
+                <th class="num">${this.t('reference.ships.colLength')}</th>
+                <th class="num">${this.t('reference.ships.colMastFunnel')}</th>
+                <th class="num">${this.t('reference.ships.colDraft')}</th>
+                <th class="num">${this.t('reference.ships.colSpeed')}</th>
               </tr>
             </thead>
             <tbody>
@@ -30,8 +32,12 @@ export class ReferencePanel extends LitElement {
                 s => html`
                   <tr>
                     <td>
-                      <div class="ship-name">${s.nameRu}</div>
-                      <div class="ship-en">${s.nameEn}</div>
+                      ${locale === 'ru'
+                        ? html`
+                            <div class="ship-name">${s.nameRu}</div>
+                            <div class="ship-en">${s.nameEn}</div>
+                          `
+                        : html`<div class="ship-name">${s.nameEn}</div>`}
                     </td>
                     <td class="num">${s.length}</td>
                     <td class="num">${s.mastHeight} / ${s.funnelHeight}</td>
@@ -49,30 +55,30 @@ export class ReferencePanel extends LitElement {
         ${SAFE_SCENARIOS.map(
           sc => html`
             <div class="panel scenario">
-              <h2 class="panel-title">Безопасные дистанции</h2>
-              <h3 class="scenario-title">${sc.title}</h3>
+              <h2 class="panel-title">${this.t('reference.scenario.title')}</h2>
+              <h3 class="scenario-title">${sc.title[locale]}</h3>
               <div class="stats">
                 <div class="stat">
-                  <span class="stat-k">Рекомендация</span>
-                  <span class="stat-v">${sc.recommendation}</span>
+                  <span class="stat-k">${this.t('reference.scenario.recommendation')}</span>
+                  <span class="stat-v">${sc.recommendation[locale]}</span>
                 </div>
                 <div class="stat">
-                  <span class="stat-k">Обнаружение</span>
-                  <span class="stat-v">${sc.detection}</span>
+                  <span class="stat-k">${this.t('reference.scenario.detection')}</span>
+                  <span class="stat-v">${sc.detection[locale]}</span>
                 </div>
               </div>
               <table>
                 <thead>
                   <tr>
-                    <th>${sc.leftCaption}</th>
-                    <th class="num">${sc.rightCaption}</th>
+                    <th>${sc.leftCaption[locale]}</th>
+                    <th class="num">${sc.rightCaption[locale]}</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${sc.rows.map(
                     r => html`
                       <tr>
-                        <td>${r.label}</td>
+                        <td>${r.label[locale]}</td>
                         <td class="num">${r.value}</td>
                       </tr>
                     `,
@@ -85,23 +91,30 @@ export class ReferencePanel extends LitElement {
       </section>
 
       <section class="panel">
-        <h2 class="panel-title">Идентификация судов</h2>
-        <p class="intro">${IDENTIFICATION_INTRO}</p>
+        <h2 class="panel-title">${this.t('reference.ident.title')}</h2>
+        <p class="intro">${IDENTIFICATION_INTRO[locale]}</p>
 
         ${IDENTIFICATION_METHODS.map(
           m => html`
             <div class="method">
-              <h3>${m.title}</h3>
+              <h3>${m.title[locale]}</h3>
               ${m.blocks
                 ? html`
                     <div class="blocks">
                       ${m.blocks.map(
                         b => html`
                           <div class="block">
-                            <div class="block-term">${b.termEn} <span>· ${b.termRu}</span></div>
+                            <div class="block-term">
+                              ${locale === 'ru'
+                                ? html`${b.termEn} <span>· ${b.termRu}</span>`
+                                : b.termEn}
+                            </div>
                             <div class="pills">
                               ${b.options.map(
-                                o => html`<span class="pill"><b>${o.en}</b> — ${o.ru}</span>`,
+                                o =>
+                                  locale === 'ru'
+                                    ? html`<span class="pill"><b>${o.en}</b> — ${o.ru}</span>`
+                                    : html`<span class="pill"><b>${o.en}</b></span>`,
                               )}
                             </div>
                           </div>
@@ -110,7 +123,7 @@ export class ReferencePanel extends LitElement {
                     </div>
                   `
                 : ''}
-              ${m.note ? html`<p class="note">${m.note}</p>` : ''}
+              ${m.note ? html`<p class="note">${m.note[locale]}</p>` : ''}
             </div>
           `,
         )}

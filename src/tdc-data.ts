@@ -1,3 +1,5 @@
+import type { Locale } from './i18n.js'
+
 export interface ShipClass {
   id: string
   nameRu: string
@@ -42,16 +44,30 @@ export const WARSHIPS: ShipClass[] = [
   },
 ]
 
+export function shipClassName(ship: ShipClass, locale: Locale): string {
+  return locale === 'ru' ? ship.nameRu : ship.nameEn
+}
+
 export interface Magnification {
   id: string
-  label: string
-  detail: string
+  label: Record<Locale, string>
+  detail: Record<Locale, string>
   coefficient: number
 }
 
 export const MAGNIFICATIONS: Magnification[] = [
-  { id: 'standard', label: 'Штатная ×1,5', detail: 'коэффициент 92,5', coefficient: 92.5 },
-  { id: 'approach', label: 'С приближением ×6', detail: 'коэффициент 366', coefficient: 366 },
+  {
+    id: 'standard',
+    label: { ru: 'Штатная ×1,5', en: 'Standard ×1.5' },
+    detail: { ru: 'коэффициент 92,5', en: 'coefficient 92.5' },
+    coefficient: 92.5,
+  },
+  {
+    id: 'approach',
+    label: { ru: 'С приближением ×6', en: 'Approach ×6' },
+    detail: { ru: 'коэффициент 366', en: 'coefficient 366' },
+    coefficient: 366,
+  },
 ]
 
 export function distanceMeters(height: number, coefficient: number, rizki: number): number {
@@ -66,56 +82,58 @@ export function speedKnots(lengthMeters: number, seconds: number): number {
   return (lengthMeters / seconds) * 1.94
 }
 
-export function formatNumber(value: number, maxFrac = 2): string {
+export function formatNumber(value: number, maxFrac = 2, locale: Locale = 'ru'): string {
   if (!Number.isFinite(value)) return '—'
-  return value.toLocaleString('ru-RU', { maximumFractionDigits: maxFrac })
+  return value.toLocaleString(locale, { maximumFractionDigits: maxFrac })
 }
 
 export const CHEAT_SHEET_RIZKI = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.5, 2, 3, 4, 5, 6, 7, 8]
 
+export type ScenarioRowLabel = Record<Locale, string>
+
 export interface ScenarioRow {
-  label: string
+  label: ScenarioRowLabel
   value: string
 }
 
 export interface Scenario {
   id: string
-  title: string
-  recommendation: string
-  detection: string
-  leftCaption: string
-  rightCaption: string
+  title: Record<Locale, string>
+  recommendation: Record<Locale, string>
+  detection: Record<Locale, string>
+  leftCaption: Record<Locale, string>
+  rightCaption: Record<Locale, string>
   rows: ScenarioRow[]
 }
 
 export const SAFE_SCENARIOS: Scenario[] = [
   {
     id: 'day',
-    title: 'День, безоблачно, без тумана',
-    recommendation: '6000–6500 м',
-    detection: '5000–5500 м',
-    leftCaption: 'Корабль',
-    rightCaption: 'Риски (по трубе)',
+    title: { ru: 'День, безоблачно, без тумана', en: 'Day, clear sky, no fog' },
+    recommendation: { ru: '6000–6500 м', en: '6000–6500 m' },
+    detection: { ru: '5000–5500 м', en: '5000–5500 m' },
+    leftCaption: { ru: 'Корабль', en: 'Ship' },
+    rightCaption: { ru: 'Риски (по трубе)', en: 'Ticks (funnel)' },
     rows: [
-      { label: 'Флавик', value: '0,6–0,7' },
-      { label: 'Биттерн', value: '0,5–0,6' },
-      { label: 'Трайбл', value: '0,7–0,8' },
+      { label: { ru: 'Флавик', en: 'Flower' }, value: '0,6–0,7' },
+      { label: { ru: 'Биттерн', en: 'Bittern' }, value: '0,5–0,6' },
+      { label: { ru: 'Трайбл', en: 'Tribal' }, value: '0,7–0,8' },
     ],
   },
   {
     id: 'night',
-    title: 'Ночь, без луны, без тумана',
-    recommendation: '3000–3500 м',
-    detection: '2000–2500 м',
-    leftCaption: 'Риски (по мачте, Флавик)',
-    rightCaption: 'Дистанция, м',
+    title: { ru: 'Ночь, без луны, без тумана', en: 'Night, no moon, no fog' },
+    recommendation: { ru: '3000–3500 м', en: '3000–3500 m' },
+    detection: { ru: '2000–2500 м', en: '2000–2500 m' },
+    leftCaption: { ru: 'Риски (по мачте, Флавик)', en: 'Ticks (mast, Flower)' },
+    rightCaption: { ru: 'Дистанция, м', en: 'Range, m' },
     rows: [
-      { label: '2', value: '3600' },
-      { label: '3', value: '2400' },
-      { label: '4', value: '1800' },
-      { label: '5', value: '1400' },
-      { label: '6', value: '1200' },
-      { label: '7', value: '1000' },
+      { label: { ru: '2', en: '2' }, value: '3600' },
+      { label: { ru: '3', en: '3' }, value: '2400' },
+      { label: { ru: '4', en: '4' }, value: '1800' },
+      { label: { ru: '5', en: '5' }, value: '1400' },
+      { label: { ru: '6', en: '6' }, value: '1200' },
+      { label: { ru: '7', en: '7' }, value: '1000' },
     ],
   },
 ]
@@ -132,18 +150,20 @@ export interface IdBlock {
 }
 
 export interface IdentificationMethod {
-  title: string
+  title: Record<Locale, string>
   blocks?: IdBlock[]
-  note?: string
+  note?: Record<Locale, string>
 }
 
-export const IDENTIFICATION_INTRO =
-  'На больших дистанциях, особенно ночью, да ещё в туман, сложно определить, мачта это или кран, где фальшборт, какая надстройка. Единственное, что можно определить уверенно, — расположение трубы.'
+export const IDENTIFICATION_INTRO: Record<Locale, string> = {
+  ru: 'На больших дистанциях, особенно ночью, да ещё в туман, сложно определить, мачта это или кран, где фальшборт, какая надстройка. Единственное, что можно определить уверенно, — расположение трубы.',
+  en: 'At long range, especially at night or in fog, it is hard to tell whether it is a mast or a kingpost, where the bulwark is, or what the superstructure looks like. The only thing you can determine with confidence is the funnel position.',
+}
 
-export const TORPEDO_SPEEDS: { id: string; label: string; knots: number }[] = [
-  { id: 't30', label: '30 уз', knots: 30 },
-  { id: 't40', label: '40 уз', knots: 40 },
-  { id: 't44', label: '44 уз', knots: 44 },
+export const TORPEDO_SPEEDS: { id: string; label: Record<Locale, string>; knots: number }[] = [
+  { id: 't30', label: { ru: '30 уз', en: '30 kn' }, knots: 30 },
+  { id: 't40', label: { ru: '40 уз', en: '40 kn' }, knots: 40 },
+  { id: 't44', label: { ru: '44 уз', en: '44 kn' }, knots: 44 },
 ]
 
 export const KNOTS_TO_MS = 0.514_4444
@@ -185,7 +205,10 @@ export function rizkiFromVisibleMeters(visible: number, distance: number): numbe
 
 export const IDENTIFICATION_METHODS: IdentificationMethod[] = [
   {
-    title: 'Способ №1 — расположение трубы, надстройки, фальшбортов',
+    title: {
+      ru: 'Способ №1 — расположение трубы, надстройки, фальшбортов',
+      en: 'Method #1 — funnel, superstructure, bulwark position',
+    },
     blocks: [
       {
         termEn: 'Engine placement',
@@ -213,10 +236,16 @@ export const IDENTIFICATION_METHODS: IdentificationMethod[] = [
         ],
       },
     ],
-    note: 'Рекомендую начинать с определения расположения трубы, далее указывать то, в чём вы уверены наверняка. Надстройку тоже видно, но есть конфигурации, когда сложно понять, отдельно она или вместе с трубой. Фальшборты видны хуже всего.',
+    note: {
+      ru: 'Рекомендую начинать с определения расположения трубы, далее указывать то, в чём вы уверены наверняка. Надстройку тоже видно, но есть конфигурации, когда сложно понять, отдельно она или вместе с трубой. Фальшборты видны хуже всего.',
+      en: 'I recommend starting with the funnel position, then marking what you are certain about. The superstructure is also visible, but some configurations make it hard to tell whether it is separate from or merged with the funnel. Bulwarks are the hardest to see.',
+    },
   },
   {
-    title: 'Способ №2 — расположение мачт, кранов, трубы',
+    title: {
+      ru: 'Способ №2 — расположение мачт, кранов, трубы',
+      en: 'Method #2 — masts, kingposts, funnel position',
+    },
     blocks: [
       {
         termEn: 'Mast',
@@ -234,10 +263,19 @@ export const IDENTIFICATION_METHODS: IdentificationMethod[] = [
         options: [{ en: 'K', ru: 'кран' }],
       },
     ],
-    note: 'Проще понять последовательное расположение мачт, кранов и трубы, чем расположение надстройки и фальшбортов.',
+    note: {
+      ru: 'Проще понять последовательное расположение мачт, кранов и трубы, чем расположение надстройки и фальшбортов.',
+      en: 'It is easier to read the sequence of masts, kingposts and funnel than the superstructure and bulwark layout.',
+    },
   },
   {
-    title: 'Способ №3 — комбинированный',
-    note: 'Так как способы №1 и №2 дополняют друг друга, использование их обоих — самый эффективный способ.',
+    title: {
+      ru: 'Способ №3 — комбинированный',
+      en: 'Method #3 — combined',
+    },
+    note: {
+      ru: 'Так как способы №1 и №2 дополняют друг друга, использование их обоих — самый эффективный способ.',
+      en: 'Since methods #1 and #2 complement each other, combining both is the most effective approach.',
+    },
   },
 ]
