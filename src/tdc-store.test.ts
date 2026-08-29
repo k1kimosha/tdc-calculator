@@ -12,6 +12,7 @@ import {
   getShips,
   importCatalogJson,
   newId,
+  removeCalculator,
   removeNote,
   removeScenario,
   removeShip,
@@ -206,6 +207,48 @@ describe('catalog calculators', () => {
     })
     expect(importCatalogJson(json)).toEqual({ ok: true })
     expect(getFormulas('speed').speed).toBe('l/t*1.94')
+  })
+
+  it('removes a calculator and leaves the others intact', () => {
+    upsertCalculator({
+      id: 'custom-del',
+      title: { ru: 'Временный', en: 'Temporary' },
+      formulas: [{ id: 'x', expr: '1+1' }],
+    })
+    removeCalculator('custom-del')
+    expect(getCalcs().some(c => c.id === 'custom-del')).toBe(false)
+    expect(getCalcs().some(c => c.id === 'distance')).toBe(true)
+  })
+
+  it('creates a custom calculator with controls and persists it', () => {
+    upsertCalculator({
+      id: 'custom-1',
+      title: { ru: 'Мой', en: 'My calculator' },
+      hint: { ru: 'Подсказка', en: 'Hint' },
+      controls: [
+        { kind: 'number', id: 'n1', label: { ru: 'X', en: 'X' }, name: 'x', default: 5, unit: { ru: 'м', en: 'm' } },
+      ],
+      formulas: [{ id: 'res', expr: 'x*2', label: { ru: 'Результат', en: 'Result' } }],
+    })
+    const calcs = getCalcs()
+    const mine = calcs.find(c => c.id === 'custom-1')
+    expect(mine).toBeDefined()
+    expect(mine!.title.ru).toBe('Мой')
+    expect(mine!.controls).toHaveLength(1)
+    expect(mine!.controls[0]).toMatchObject({ kind: 'number', name: 'x', default: 5 })
+    expect(mine!.formulas.find(f => f.id === 'res')?.expr).toBe('x*2')
+    expect(calcs[calcs.length - 1].id).toBe('custom-1')
+
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
+    expect(stored.calcs.some((c: { id: string }) => c.id === 'custom-1')).toBe(true)
+  })
+
+  it('migrates a legacy partial upsert to a full config', () => {
+    upsertCalculator({ id: 'distance', formulas: [{ id: 'dist', expr: 'h*K/r' }] })
+    const dist = getCalcs().find(c => c.id === 'distance')!
+    expect(dist.formulas.find(f => f.id === 'dist')?.expr).toBe('h*K/r')
+    expect(dist.title.ru.length).toBeGreaterThan(0)
+    expect(dist.controls.length).toBeGreaterThan(0)
   })
 })
 

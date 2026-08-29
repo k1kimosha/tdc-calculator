@@ -1,19 +1,15 @@
 import { css, html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import {
-  CALC_IDS,
   IDENTIFICATION_INTRO,
   IDENTIFICATION_METHODS,
-  defaultFormulasFor,
   locText,
   shipClassName,
   type CalculatorConfig,
-  type CalculatorId,
   type Scenario,
   type ScenarioMode,
   type ShipClass,
 } from '../tdc-data.js'
-import { validateFormula } from '../formula-engine.js'
 import { I18nElement } from '../i18n.js'
 import { formStyles, segmentStyles, tableStyles } from '../shared-styles.js'
 import {
@@ -26,6 +22,7 @@ import {
   getShips,
   importCatalogJson,
   newId,
+  removeCalculator,
   removeNote,
   removeScenario,
   removeShip,
@@ -37,6 +34,7 @@ import {
   upsertShip,
   type Note,
 } from '../tdc-store.js'
+import './calc-editor.js'
 
 type EditingState =
   | { kind: 'ship'; draft: ShipClass }
@@ -240,26 +238,38 @@ export class ReferencePanel extends I18nElement {
     this.modeOf = { ...this.modeOf, [sc.id]: value }
   }
 
-  private _openCalc(id: CalculatorId) {
+  private _openCalc(id: string) {
     const existing = getCalcs().find(c => c.id === id)
     const draft = existing
       ? (JSON.parse(JSON.stringify(existing)) as CalculatorConfig)
-      : { id, formulas: defaultFormulasFor(id) }
+      : {
+          id: newId('calc'),
+          title: { ru: '', en: '' },
+          hint: { ru: '', en: '' },
+          controls: [],
+          formulas: [],
+        }
     this.editing = { kind: 'calc', draft }
   }
 
-  private _calcExpr(index: number, value: string) {
-    if (!this.editing || this.editing.kind !== 'calc') return
-    const draft = this.editing.draft
-    draft.formulas = draft.formulas.map((f, i) => (i === index ? { ...f, expr: value } : f))
-    this.editing = { kind: 'calc', draft }
+  private _deleteCalc(id: string) {
+    const calc = getCalcs().find(c => c.id === id)
+    const name = calc ? locText(calc.title, this.locale) || id : id
+    if (!window.confirm(this.t('reference.calcs.deleteConfirm', { name }))) return
+    removeCalculator(id)
+    if (this.editing?.kind === 'calc' && this.editing.draft.id === id) this.editing = null
+    this._showToast(this.t('reference.calcs.deleted'))
   }
 
-  private _saveCalc() {
-    if (!this.editing || this.editing.kind !== 'calc') return
-    upsertCalculator(this.editing.draft)
+  private _onCalcSaved(e: Event) {
+    const detail = (e as CustomEvent<CalculatorConfig>).detail
+    upsertCalculator(detail)
     this.editing = null
     this._showToast(this.t('reference.calcs.saved'))
+  }
+
+  private _onCalcCancel() {
+    this.editing = null
   }
 
   private _onExport() {
@@ -710,42 +720,60 @@ export class ReferencePanel extends I18nElement {
       <section class="panel">
         <div class="section-head">
           <h2 class="panel-title">${this.t('reference.calcs.title')}</h2>
+          <div class="row-actions">
+            <button type="button" class="btn btn-accent" @click=${() => this._openCalc('')}>
+              ${this.t('reference.calcs.add')}
+            </button>
+          </div>
         </div>
         <p class="hint">${this.t('reference.calcs.hint')}</p>
-        <div class="calc-grid">
-          ${CALC_IDS.map(
-            id => html`
-              <div class="calc-card">
-                <div class="scenario-head">
-                  <h3 class="scenario-title">${this.t(`app.tabs.${id}.label`)}</h3>
-                  <div class="row-actions">
-                    <button
-                      type="button"
-                      class="btn"
-                      ?disabled=${this.editing?.kind === 'calc' && this.editing.draft.id === id}
-                      @click=${() => this._openCalc(id)}
-                    >
-                      ${this.t('reference.calcs.edit')}
-                    </button>
-                  </div>
-                </div>
-                <div class="calc-formulas">
-                  ${(calcs.find(c => c.id === id)?.formulas ?? []).map(
-                    f => html`
-                      <div class="calc-formula">
-                        <span class="calc-label">${this.t(`reference.calcs.formula.${id}.${f.id}`)}</span>
-                        <code class="calc-expr">${f.expr}</code>
+        ${calcs.length === 0
+          ? html`<p class="hint">${this.t('reference.calcs.empty')}</p>`
+          : html`
+              <div class="calc-grid">
+                ${calcs.map(calc => {
+                  const name = locText(calc.title, this.locale) || calc.id
+                  const editingThis = this.editing?.kind === 'calc' && this.editing.draft.id === calc.id
+                  return html`
+                    <div class="calc-card">
+                      <div class="scenario-head">
+                        <h3 class="scenario-title">${name}</h3>
+                        <div class="row-actions">
+                          <button
+                            type="button"
+                            class="btn"
+                            ?disabled=${editingThis}
+                            @click=${() => this._openCalc(calc.id)}
+                          >
+                            ${this.t('reference.calcs.edit')}
+                          </button>
+                          <button type="button" class="btn btn-danger" @click=${() => this._deleteCalc(calc.id)}>
+                            ${this.t('reference.calcs.delete')}
+                          </button>
+                        </div>
                       </div>
-                    `,
-                  )}
-                </div>
-                <p class="calc-vars">
-                  <b>${this.t('reference.calcs.varsTitle')}:</b> ${this.t(`reference.calcs.vars.${id}`)}
-                </p>
+                      <div class="calc-formulas">
+                        ${calc.formulas.map(f => {
+                          const flabel = f.label ? locText(f.label, this.locale) : f.id
+                          return html`
+                            <div class="calc-formula">
+                              <span class="calc-label">${flabel}</span>
+                              <code class="calc-expr">${f.expr}</code>
+                            </div>
+                          `
+                        })}
+                      </div>
+                      <p class="calc-vars">
+                        <b>${this.t('reference.calcs.varsTitle')}:</b>
+                        ${calc.controls
+                          .flatMap(c => (c.kind === 'number' || c.kind === 'select' ? [c.name] : []))
+                          .join(', ') || '—'}
+                      </p>
+                    </div>
+                  `
+                })}
               </div>
-            `,
-          )}
-        </div>
+            `}
         ${this.editing?.kind === 'calc' ? this.renderCalcForm() : nothing}
       </section>
     `
@@ -753,43 +781,15 @@ export class ReferencePanel extends I18nElement {
 
   private renderCalcForm() {
     const d = (this.editing as { kind: 'calc'; draft: CalculatorConfig }).draft
-    const id = d.id
+    const label = d.title.ru || d.title.en || this.t('reference.calcs.formTitleNew')
     return html`
       <div class="editor">
-        <h3>${this.t(`app.tabs.${id}.label`)}</h3>
-        <div class="form-grid">
-          ${d.formulas.map((f, i) => {
-            const err = validateFormula(f.expr)
-            return html`
-              <div class="field field-wide">
-                <label class="field-label">${this.t(`reference.calcs.formula.${id}.${f.id}`)}</label>
-                <input
-                  type="text"
-                  class="mono-input"
-                  spellcheck="false"
-                  .value=${f.expr}
-                  @input=${(e: Event) => this._calcExpr(i, (e.target as HTMLInputElement).value)}
-                />
-                ${err ? html`<span class="calc-error">${this.t('reference.calcs.invalid', { error: err })}</span>` : nothing}
-              </div>
-            `
-          })}
-        </div>
-        <div class="calc-help">
-          <h4>${this.t('reference.calcs.syntaxTitle')}</h4>
-          <p>${this.t('reference.calcs.syntaxBody')}</p>
-        </div>
-        <p class="calc-vars">
-          <b>${this.t('reference.calcs.varsTitle')}:</b> ${this.t(`reference.calcs.vars.${id}`)}
-        </p>
-        <div class="form-actions">
-          <button type="button" class="btn btn-accent" @click=${this._saveCalc}>
-            ${this.t('reference.save')}
-          </button>
-          <button type="button" class="btn" @click=${() => (this.editing = null)}>
-            ${this.t('reference.cancel')}
-          </button>
-        </div>
+        <h3>${label}</h3>
+        <tdc-calc-editor
+          .config=${d}
+          @calc-save=${(e: Event) => this._onCalcSaved(e)}
+          @calc-cancel=${this._onCalcCancel}
+        ></tdc-calc-editor>
       </div>
     `
   }
