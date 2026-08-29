@@ -9,6 +9,7 @@ export const ru = {
       aob: { label: 'КУЦ', hint: 'курсовой угол' },
       okane: { label: 'О’Кейн', hint: 'упреждение' },
       reference: { label: 'Справочник', hint: 'корабли и уставки' },
+      docs: { label: 'Документация', hint: 'как пользоваться' },
     },
     lang: {
       label: 'Язык интерфейса',
@@ -322,6 +323,11 @@ export const ru = {
   },
   calcs: {
     invalid: 'Ошибка формулы: {error}',
+  },
+  docs: {
+    versionLabel: 'Документация · версия',
+    loading: 'Загрузка документации…',
+    loadError: 'Не удалось загрузить документацию.',
   },
 }
 

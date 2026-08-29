@@ -5,9 +5,10 @@ import './components/speed-panel.js'
 import './components/aob-panel.js'
 import './components/okane-panel.js'
 import './components/reference-panel.js'
+import './components/docs-panel.js'
 import { I18nElement, LOCALE_OPTIONS, setLocale } from './i18n.js'
 
-type Tab = 'distance' | 'speed' | 'aob' | 'okane' | 'reference'
+type Tab = 'distance' | 'speed' | 'aob' | 'okane' | 'reference' | 'docs'
 
 const TABS: { id: Tab; labelKey: string; hintKey: string }[] = [
   { id: 'distance', labelKey: 'app.tabs.distance.label', hintKey: 'app.tabs.distance.hint' },
@@ -15,6 +16,7 @@ const TABS: { id: Tab; labelKey: string; hintKey: string }[] = [
   { id: 'aob', labelKey: 'app.tabs.aob.label', hintKey: 'app.tabs.aob.hint' },
   { id: 'okane', labelKey: 'app.tabs.okane.label', hintKey: 'app.tabs.okane.hint' },
   { id: 'reference', labelKey: 'app.tabs.reference.label', hintKey: 'app.tabs.reference.hint' },
+  { id: 'docs', labelKey: 'app.tabs.docs.label', hintKey: 'app.tabs.docs.hint' },
 ]
 
 @customElement('tdc-app')
@@ -113,7 +115,7 @@ export class TdcApp extends I18nElement {
 
     .tabs {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 6px;
       padding: 6px;
       margin-bottom: 18px;
@@ -242,6 +244,7 @@ export class TdcApp extends I18nElement {
         ${this.tab === 'reference'
           ? html`<tdc-reference-panel></tdc-reference-panel>`
           : ''}
+        ${this.tab === 'docs' ? html`<tdc-docs-panel></tdc-docs-panel>` : ''}
       </main>
 
       <footer class="footer">
