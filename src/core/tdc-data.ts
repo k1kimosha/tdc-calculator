@@ -1,3 +1,9 @@
+/**
+ * Справочные данные и математика TDC.
+ * Чистые константы/типы/функции без состояния: классы кораблей, подлодки,
+ * сценарии, корабельный каталог, методы идентификации, таблицы скоростей,
+ * а также формулы дистанции/скорости/углов и форматы чисел.
+ */
 import type { Locale } from './i18n.js'
 
 export interface ShipClass {
@@ -522,9 +528,9 @@ export const DEFAULT_CALC_CONFIGS: CalculatorConfig[] = [
     ],
     formulas: [
       { id: 'visRizki', expr: 'r*d/1000', label: { ru: 'Видимая длина по рискам', en: 'Visible length from ticks' }, unit: METERS },
-      { id: 'aob', expr: 'asin(v/l)*180/pi', label: { ru: 'КУЦ по видимой длине', en: 'AOB from visible length' }, unit: DEG },
+      { id: 'aob', expr: 'asin(visRizki/l)*180/pi', label: { ru: 'КУЦ по видимой длине', en: 'AOB from visible length' }, unit: DEG },
       { id: 'visAob', expr: 'l*sin(a*pi/180)', label: { ru: 'Видимая длина по КУЦ', en: 'Visible length from AOB' }, unit: METERS },
-      { id: 'rizki', expr: 'v*1000/d', label: { ru: 'Риски по видимой длине', en: 'Ticks from visible length' } },
+      { id: 'rizki', expr: 'visRizki*1000/d', label: { ru: 'Риски по видимой длине', en: 'Ticks from visible length' } },
     ],
   },
   {

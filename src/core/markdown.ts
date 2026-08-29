@@ -1,3 +1,10 @@
+/**
+ * Минималистичный рендерер Markdown для документации.
+ * Поддерживает: заголовки h1-h4 (с якорями sec-N), списки ul/ol, параграфы,
+ * `код` / **жирный** / *курсив*, блочные ```fences (lang `formula`
+ * выводится в div.docs-formula для математических формул).
+ */
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -16,6 +23,7 @@ function renderInline(text: string): string {
 
 const FENCE_RE = /^```([a-z]*)\s*$/
 
+/** Рендер Markdown-документа в HTML-строку. */
 export function renderMarkdown(md: string): string {
   const lines = md.split(/\r?\n/)
   const out: string[] = []
@@ -92,10 +100,12 @@ export function renderMarkdown(md: string): string {
   return out.join('\n')
 }
 
+/** Вырезать все HTML-теги (для текстовых превью). */
 export function stripTags(html: string): string {
   return html.replace(/<[^>]+>/g, '')
 }
 
+/** Извлечь оглавление: заголовки h2 с их id (`sec-N`). */
 export function extractSections(html: string): { id: string; title: string }[] {
   const out: { id: string; title: string }[] = []
   const re = /<h2 id="([^"]+)">([\s\S]*?)<\/h2>/g

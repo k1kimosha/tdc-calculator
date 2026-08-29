@@ -1,9 +1,14 @@
+/**
+ * Журнал походов: старт/стоп патруля, фиксация выстрелов (исход, заметка),
+ * список завершённых походов, экспорт/импорт JSON и PDF-отчёт.
+ */
 import { css, html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { I18nElement } from '../i18n.js'
-import { formStyles } from '../shared-styles.js'
-import { locText, submarineName, SUBMARINES } from '../tdc-data.js'
-import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces'
+import { I18nElement } from '../core/i18n.js'
+import { formStyles } from '../styles/shared-styles.js'
+import { locText, submarineName, SUBMARINES } from '../core/tdc-data.js'
+import { OUTCOME_KEY, countOutcomes, exportPatrolPdf } from '../report/pdf-report.js'
+import { downloadText, readFileAsText } from '../utils/download.js'
 import {
   SHOT_OUTCOMES,
   deletePatrol,
@@ -26,29 +31,7 @@ import {
   type Shot,
   type ShotOutcome,
   type ShotSnapshotCalc,
-} from '../tdc-log.js'
-
-const OUTCOME_KEY: Record<ShotOutcome, string> = {
-  none: 'log.outcomeNone',
-  hit_1: 'log.outcomeHit1',
-  hit_n: 'log.outcomeHitN',
-  miss_front: 'log.outcomeMissFront',
-  miss_behind: 'log.outcomeMissBehind',
-  hit_other: 'log.outcomeHitOther',
-}
-
-function countOutcomes(shots: Shot[]): Record<ShotOutcome, number> {
-  const counts: Record<ShotOutcome, number> = {
-    none: 0,
-    hit_1: 0,
-    hit_n: 0,
-    miss_front: 0,
-    miss_behind: 0,
-    hit_other: 0,
-  }
-  for (const s of shots) counts[s.outcome]++
-  return counts
-}
+} from '../core/tdc-log.js'
 
 @customElement('tdc-log-panel')
 export class TdcLogPanel extends I18nElement {
@@ -114,36 +97,24 @@ export class TdcLogPanel extends I18nElement {
   }
 
   private _onExport() {
-    const blob = new Blob([exportLogJson()], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = logFileName()
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
+    downloadText(exportLogJson(), logFileName(), 'application/json')
   }
 
   private _onImportClick() {
     this.shadowRoot?.querySelector<HTMLInputElement>('input[type="file"]')?.click()
   }
 
-  private _onImportFile(e: Event) {
+  private async _onImportFile(e: Event) {
     const input = e.target as HTMLInputElement
     const file = input.files?.[0]
     input.value = ''
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = importLogJson(String(reader.result ?? ''))
-      if (result.ok) this._showToast(this.t('log.importOk'))
-      else
-        this._showToast(
-          this.t(result.error === 'json' ? 'log.importErrJson' : 'log.importErrShape'),
-        )
-    }
-    reader.readAsText(file)
+    const result = importLogJson(await readFileAsText(file))
+    if (result.ok) this._showToast(this.t('log.importOk'))
+    else
+      this._showToast(
+        this.t(result.error === 'json' ? 'log.importErrJson' : 'log.importErrShape'),
+      )
   }
 
   private _onClear() {
@@ -334,7 +305,7 @@ export class TdcLogPanel extends I18nElement {
                   </div>
                 </div>
                 <div class="patrol-actions">
-                  <button type="button" class="btn" @click=${() => this._exportPdf(p)}>
+                  <button type="button" class="btn" @click=${() => exportPatrolPdf(p, this.locale, this.t.bind(this))}>
                     ${this.t('log.printReport')}
                   </button>
                   <button type="button" class="btn btn-danger" @click=${() => this._onDeletePatrol(p.id, name)}>
@@ -377,212 +348,6 @@ export class TdcLogPanel extends I18nElement {
           </div>
         `,
       )
-  }
-
-  private _reportFileName(patrol: Patrol): string {
-    const name = (patrol.label.trim() || 'patrol').replace(/[^a-z0-9_-]+/gi, '-')
-    const date = new Date(patrol.startedAt)
-    const y = date.getFullYear()
-    const m = String(date.getMonth() + 1).padStart(2, '0')
-    const d = String(date.getDate()).padStart(2, '0')
-    return `tdc-report-${name}-${y}-${m}-${d}.pdf`
-  }
-
-  private _shotCellText(snap: ShotSnapshotCalc): { title: string; formulas: string; inputs: string; results: string } {
-    const title = locText(snap.calcTitle, this.locale) || snap.calcId
-    const formulas = snap.formulas
-      .map(f => `${locText(f.label, this.locale) || f.id}: ${f.expr}`)
-      .join('; ')
-    const inputs = snap.inputs.map(i => `${i.label}: ${i.value}`).join(', ')
-    const results = snap.results
-      .map(r => `${r.label}${r.unit ? `, ${r.unit}` : ''}: ${r.value}`)
-      .join(', ')
-    return { title, formulas, inputs, results }
-  }
-
-  private async _exportPdf(patrol: Patrol) {
-    const name = patrol.label.trim() || patrol.id.slice(0, 8)
-    const author = getLog().authorNick.trim()
-    const counts = countOutcomes(patrol.shots)
-    const t = this.t.bind(this)
-    const locale = this.locale
-
-    const mod = (await import('pdfmake/build/pdfmake')) as unknown as {
-      default: {
-        vfs: Record<string, string>
-        createPdf: (dd: TDocumentDefinitions) => { download: (filename?: string) => void }
-      }
-    }
-    const fonts = (await import('pdfmake/build/vfs_fonts')) as unknown as {
-      default?: { pdfMake?: { vfs: Record<string, string> } }
-      pdfMake?: { vfs: Record<string, string> }
-    }
-    const pdf = mod.default
-    const vfs = fonts.pdfMake?.vfs ?? fonts.default?.pdfMake?.vfs
-    if (vfs) pdf.vfs = vfs
-
-    const shotBlock = (s: Shot, i: number): Content[] => {
-      const outcomeText = this.t(OUTCOME_KEY[s.outcome])
-      const blocks: Content[] = []
-      for (const snap of s.snapshot) {
-        const cell = this._shotCellText(snap)
-        blocks.push(
-          { text: cell.title, style: 'calcTitle' },
-          {
-            text: [{ text: `${t('log.reportInputs')}: `, style: 'label' }, cell.inputs || '—'],
-            style: 'kv',
-          },
-          {
-            text: [{ text: `${t('log.formulasTitle')}: `, style: 'label' }, cell.formulas || '—'],
-            style: 'kv',
-          },
-          {
-            text: [{ text: `${t('log.reportResults')}: `, style: 'label' }, cell.results || '—'],
-            style: 'kv',
-          },
-        )
-      }
-      return [
-        { text: t('log.shotN', { n: String(i + 1) }), style: 'shotTitle' },
-        {
-          columns: [
-            {
-              width: 'auto',
-              text: [{ text: `${t('log.at')}: `, style: 'label' }, formatDuration(s.elapsedMs)],
-            },
-            {
-              width: 'auto',
-              text: [
-                { text: `${t('log.outcomeLabel')}: `, style: 'label' },
-                { text: outcomeText, bold: true },
-              ],
-            },
-          ],
-          columnGap: 24,
-          margin: [0, 0, 0, 4],
-        },
-        ...blocks,
-        {
-          text: [{ text: `${t('log.notePlaceholder')}: `, style: 'label' }, s.note || '—'],
-          style: 'kv',
-          margin: [0, 4, 0, 0],
-        },
-        {
-          canvas: [{ type: 'line', x1: 0, y1: 0, x2: 770, y2: 0, lineWidth: 0.6, lineColor: '#c8d2dc' }],
-          margin: [0, 10, 0, 12],
-        },
-      ]
-    }
-
-    const summaryRows = [
-      [t('log.reportTotal'), String(patrol.shots.length)],
-      [t('log.reportHit1'), String(counts.hit_1)],
-      [t('log.reportHitN'), String(counts.hit_n)],
-      [t('log.reportMissFront'), String(counts.miss_front)],
-      [t('log.reportMissBehind'), String(counts.miss_behind)],
-      [t('log.reportHitOther'), String(counts.hit_other)],
-      [t('log.reportNone'), String(counts.none)],
-    ]
-
-    const logo = '#3fd9c7'
-    const doc: TDocumentDefinitions = {
-      pageSize: 'A4',
-      pageOrientation: 'landscape',
-      pageMargins: [36, 36, 36, 36],
-      content: [
-        {
-          columns: [
-            {
-              width: 48,
-              alignment: 'center',
-              canvas: [
-                { type: 'rect', x: 0, y: 0, w: 48, h: 48, r: 8, color: '#0b1524' },
-                { type: 'ellipse', x: 24, y: 24, r1: 20, r2: 20, lineColor: logo, lineWidth: 1 },
-                { type: 'ellipse', x: 24, y: 24, r1: 13, r2: 13, lineColor: logo, lineWidth: 1 },
-                { type: 'ellipse', x: 24, y: 24, r1: 6, r2: 6, lineColor: logo, lineWidth: 1 },
-                { type: 'ellipse', x: 24, y: 24, r1: 1.6, r2: 1.6, color: logo },
-                { type: 'line', x1: 24, y1: 24, x2: 24, y2: 6, lineColor: logo, lineWidth: 1 },
-                { type: 'ellipse', x: 24, y: 5, r1: 1.8, r2: 1.8, color: logo },
-              ],
-            },
-            {
-              width: '*',
-              stack: [
-                { text: t('log.reportTitle'), style: 'title' },
-                { text: `${name} · ${this.dateStr(patrol.startedAt)}`, style: 'subtitle' },
-              ],
-            },
-          ],
-          columnGap: 14,
-          margin: [0, 0, 0, 6],
-        },
-        {
-          columns: [
-            { width: '*', text: [
-              { text: `${t('log.reportAuthor')}: `, style: 'label' },
-              author || '—',
-            ] },
-            { width: '*', text: [
-              { text: `${t('log.reportUboat')}: `, style: 'label' },
-              patrol.uboatId ? submarineName(patrol.uboatId, locale) : '—',
-            ] },
-            { width: '*', text: [
-              { text: `${t('log.reportPatrol')}: `, style: 'label' },
-              name,
-            ] },
-          ],
-          columnGap: 24,
-        },
-        { columns: [
-            { width: '*', text: [
-              { text: `${t('log.reportStarted')}: `, style: 'label' },
-              this.dateStr(patrol.startedAt),
-            ] },
-            { width: '*', text: [
-              { text: `${t('log.reportEnded')}: `, style: 'label' },
-              patrol.endedAt ? this.dateStr(patrol.endedAt) : '—',
-            ] },
-            { width: '*', text: [
-              { text: `${t('log.reportDuration')}: `, style: 'label' },
-              formatDuration(patrolDuration(patrol)),
-            ] },
-          ],
-          columnGap: 24,
-          margin: [0, 4, 0, 0],
-        },
-        { text: t('log.reportSummary'), style: 'h2' },
-        {
-          table: {
-            widths: ['*', 'auto'],
-            body: [
-              ...summaryRows.map(([k, v]) => [
-                { text: String(k), style: 'cell' } as const,
-                { text: String(v), alignment: 'right' as const, style: 'cell' } as const,
-              ]),
-            ],
-          },
-          margin: [0, 0, 0, 14],
-        },
-        { text: t('log.shotsTitle'), style: 'h2' },
-        patrol.shots.length === 0
-          ? { text: t('log.reportNoShots'), style: 'muted' }
-          : patrol.shots.flatMap((s, i) => shotBlock(s, i)),
-      ],
-      styles: {
-        title: { fontSize: 19, bold: true, margin: [0, 0, 0, 4] },
-        subtitle: { fontSize: 12.5, color: '#5a6a7a', margin: [0, 0, 0, 14] },
-        label: { bold: true },
-        h2: { fontSize: 13.5, bold: true, margin: [0, 16, 0, 6] },
-        shotTitle: { fontSize: 12.5, bold: true, color: '#1e4f74', margin: [0, 14, 0, 4] },
-        calcTitle: { fontSize: 11.5, bold: true, color: '#3a5a76', margin: [0, 6, 0, 2] },
-        kv: { fontSize: 10, margin: [0, 0, 0, 2] },
-        cell: { fontSize: 10.5 },
-        muted: { color: '#5a6a7a' },
-      },
-      defaultStyle: { fontSize: 11, lineHeight: 1.35 },
-    }
-
-    pdf.createPdf(doc).download(this._reportFileName(patrol))
   }
 
   render() {

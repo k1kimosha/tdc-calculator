@@ -1,3 +1,8 @@
+/**
+ * Журнал боевых походов (localStorage).
+ * Хранит патрули со снимками выстрелов; поддерживает миграцию версий
+ * (LOG_VERSION), экспорт/импорт JSON и уведомление подписчиков.
+ */
 import { newId } from './tdc-store.js'
 
 export const LOG_STORAGE_KEY = 'tdc-log'

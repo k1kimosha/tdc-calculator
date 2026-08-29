@@ -1,3 +1,12 @@
+/**
+ * Математический движок формул калькуляторов.
+ *
+ * Умеет: числа (включая e-нотацию), переменные, константы (pi/e/tau),
+ * бинарные операторы + - * / % ^, унарные +/-, скобки и функции
+ * (sin, cos, tan, asin, acos, atan, atan2, sqrt, ln, log2, min, max, ...).
+ * Строка компилируется один раз в замыкание (с кэшем) и затем
+ * многократно оценивается подставляя переменные.
+ */
 export class FormulaError extends Error {
   readonly position?: number
 
@@ -248,6 +257,7 @@ class Parser {
 }
 
 export interface CompiledFormula {
+  /** Оценить выражение, используя `vars` как значения переменных. */
   evaluate(vars: Record<string, number>): number
 }
 
@@ -305,6 +315,7 @@ function compileNode(node: Node): (vars: Record<string, number>) => number {
 
 const compileCache = new Map<string, CompiledFormula>()
 
+/** Скомпилировать выражение (кэшируется по строке). Бросает FormulaError при синтаксической ошибке. */
 export function compileFormula(expr: string): CompiledFormula {
   const cached = compileCache.get(expr)
   if (cached) return cached
@@ -316,10 +327,12 @@ export function compileFormula(expr: string): CompiledFormula {
   return compiled
 }
 
+/** Оценить выражение немедленно (компиляция с кэшем). */
 export function evaluateFormula(expr: string, vars: Record<string, number>): number {
   return compileFormula(expr).evaluate(vars)
 }
 
+/** Проверить синтаксис: возвращает сообщение ошибки или `null` если выражение валидно. */
 export function validateFormula(expr: string): string | null {
   try {
     compileFormula(expr)
@@ -334,6 +347,7 @@ export interface CompiledFormulas {
   error: string | null
 }
 
+/** Компилировать набор выражений ({id: expr}) атомарно: при первой ошибке возвращает error. */
 export function compileFormulas(exprs: Record<string, string>): CompiledFormulas {
   const fns: Record<string, CompiledFormula> = {}
   for (const [key, expr] of Object.entries(exprs)) {
@@ -349,6 +363,7 @@ export function compileFormulas(exprs: Record<string, string>): CompiledFormulas
   return { fns, error: null }
 }
 
+/** Оценить скомпилированную формулу без «взрыва»: вернёт `null` при ошибке или отсутствии функции. */
 export function evaluateOrNull(fn: CompiledFormula | undefined, vars: Record<string, number>): number | null {
   if (!fn) return null
   try {

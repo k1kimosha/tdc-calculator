@@ -1,10 +1,14 @@
+/**
+ * Панель документации: загружает md/HTML доков по текущей локали,
+ * строит оглавление из h2-секций и поддерживает навигацию по якорям.
+ */
 import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { unsafeHTML } from 'lit/directives/unsafe-html.js'
 import type { PropertyValues } from 'lit'
-import { I18nElement } from '../i18n.js'
-import { extractSections, renderMarkdown } from '../markdown.js'
-import { formStyles } from '../shared-styles.js'
+import { I18nElement } from '../core/i18n.js'
+import { extractSections, renderMarkdown } from '../core/markdown.js'
+import { formStyles } from '../styles/shared-styles.js'
 
 interface DocSection {
   id: string

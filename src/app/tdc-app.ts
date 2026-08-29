@@ -1,12 +1,16 @@
+/**
+ * Корневой компонент приложения: вкладки калькуляторов/журнала/справочника/доках,
+ * переключатель языка, авто-переключение активной вкладки если калькулятор удалён.
+ */
 import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import './components/calc-panel.js'
-import './components/reference-panel.js'
-import './components/docs-panel.js'
-import './components/tdc-log-panel.js'
-import { I18nElement, LOCALE_OPTIONS, setLocale } from './i18n.js'
-import { locText, type CalculatorConfig } from './tdc-data.js'
-import { getCalcs, subscribeCatalog } from './tdc-store.js'
+import '../components/calc-panel.js'
+import '../components/reference-panel.js'
+import '../components/docs-panel.js'
+import '../components/tdc-log-panel.js'
+import { I18nElement, LOCALE_OPTIONS, setLocale } from '../core/i18n.js'
+import { locText, type CalculatorConfig } from '../core/tdc-data.js'
+import { getCalcs, subscribeCatalog } from '../core/tdc-store.js'
 
 @customElement('tdc-app')
 export class TdcApp extends I18nElement {

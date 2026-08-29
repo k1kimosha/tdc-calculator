@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { setLocale } from './i18n.js'
-import { CalcPanel } from './components/calc-panel.js'
-import { getShips, resetCatalog } from './tdc-store.js'
-import type { CalculatorConfig } from './tdc-data.js'
+import { setLocale } from '../core/i18n.js'
+import { CalcPanel } from './calc-panel.js'
+import { getShips, resetCatalog } from '../core/tdc-store.js'
+import type { CalculatorConfig } from '../core/tdc-data.js'
 
 const tick = () => new Promise<void>(r => setTimeout(r))
 
@@ -52,6 +52,20 @@ describe('calc panel', () => {
     const el = await mount(FEED_CONFIG)
     expect(el.shadowRoot!.querySelector('.panel-title')!.textContent!.trim()).toBe('Демо')
     expect(resultValues(el)).toEqual(['6', '9'])
+  })
+
+  it('feeds previous results by case-insensitive id (visRizki)', async () => {
+    const config: CalculatorConfig = {
+      id: 'mixed',
+      title: { ru: 'Регистр', en: 'Case' },
+      controls: [{ kind: 'number', id: 'r', label: { ru: 'Риски', en: 'Ticks' }, name: 'r', default: 15 }],
+      formulas: [
+        { id: 'visRizki', expr: 'r*2' },
+        { id: 'aob', expr: 'asin(visRizki/30)*180/pi' },
+      ],
+    }
+    const el = await mount(config)
+    expect(resultValues(el)).toEqual(['30', '90'])
   })
 
   it('recomputes on input change', async () => {

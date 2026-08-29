@@ -12,6 +12,7 @@ import {
   getShips,
   importCatalogJson,
   newId,
+  readCatalog,
   removeCalculator,
   removeNote,
   removeScenario,
@@ -172,7 +173,7 @@ describe('catalog calculators', () => {
 
   it('getFormulas falls back to defaults for a calculator', () => {
     expect(getFormulas('distance').dist).toBe('h*k/r')
-    expect(getFormulas('aob').aob).toBe('asin(v/l)*180/pi')
+    expect(getFormulas('aob').aob).toBe('asin(visRizki/l)*180/pi')
     expect(getFormulas('okane').runTime).toBe('d/(vs*c)')
   })
 
@@ -207,6 +208,58 @@ describe('catalog calculators', () => {
     })
     expect(importCatalogJson(json)).toEqual({ ok: true })
     expect(getFormulas('speed').speed).toBe('l/t*1.94')
+  })
+
+  it('migrates broken aob formulas (unknown v / missing visRizki feed)', () => {
+    const catalog = {
+      version: 3,
+      ships: [],
+      scenarios: [],
+      notes: [],
+      calcs: [
+        {
+          id: 'aob',
+          title: { ru: 'КУЦ', en: 'AOB' },
+          controls: [],
+          formulas: [
+            { id: 'aob', expr: 'asin(v/l)*180/pi', label: { ru: 'КУЦ по видимой длине', en: 'AOB from visible length' } },
+            { id: 'rizki', expr: 'v*1000/d', label: { ru: 'Риски по видимой длине', en: 'Ticks from visible length' } },
+          ],
+        },
+      ],
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(catalog))
+    const aob = readCatalog().calcs.find(c => c.id === 'aob')!
+    expect(aob.formulas.find(f => f.id === 'visRizki')?.expr).toBe('r*d/1000')
+    expect(aob.formulas.find(f => f.id === 'aob')?.expr).toBe('asin(visRizki/l)*180/pi')
+    expect(aob.formulas.find(f => f.id === 'rizki')?.expr).toBe('visRizki*1000/d')
+  })
+
+  it('reorders aob formulas that feed from a later formula (persisted broken order)', () => {
+    const catalog = {
+      version: 3,
+      ships: [],
+      scenarios: [],
+      notes: [],
+      calcs: [
+        {
+          id: 'aob',
+          title: { ru: 'КУЦ', en: 'AOB' },
+          controls: [],
+          formulas: [
+            { id: 'aob', expr: 'asin(visRizki/l)*180/pi', label: { ru: 'КУЦ по видимой длине', en: 'AOB from visible length' } },
+            { id: 'rizki', expr: 'visRizki*1000/d', label: { ru: 'Риски по видимой длине', en: 'Ticks from visible length' } },
+            { id: 'visRizki', expr: 'r*d/1000', label: { ru: 'Видимая длина по рискам', en: 'Visible length from ticks' } },
+          ],
+        },
+      ],
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(catalog))
+    const aob = readCatalog().calcs.find(c => c.id === 'aob')!
+    const order = aob.formulas.map(f => f.id)
+    expect(order.indexOf('visRizki')).toBeLessThan(order.indexOf('aob'))
+    expect(order.indexOf('visRizki')).toBeLessThan(order.indexOf('rizki'))
+    expect(aob.formulas.find(f => f.id === 'aob')?.expr).toBe('asin(visRizki/l)*180/pi')
   })
 
   it('removes a calculator and leaves the others intact', () => {

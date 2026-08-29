@@ -1,3 +1,8 @@
+/**
+ * Общие CSS-стили компонентов (Lit template strings):
+ * formStyles — панели/формы/результаты, segmentStyles — радио-сегменты,
+ * tableStyles — таблицы справочника.
+ */
 import { css } from 'lit'
 
 export const formStyles = css`

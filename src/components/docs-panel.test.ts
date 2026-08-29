@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setLocale } from './i18n.js'
-import { DocsPanel } from './components/docs-panel.js'
+import { setLocale } from '../core/i18n.js'
+import { DocsPanel } from './docs-panel.js'
 
 const tick = () => new Promise<void>(r => setTimeout(r))
 

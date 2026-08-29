@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
-import { renderMarkdown } from './src/markdown.js'
+import { renderMarkdown } from './src/core/markdown.js'
 
 const LOCALES = ['ru', 'en'] as const
 

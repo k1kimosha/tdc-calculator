@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { setLocale } from './i18n.js'
-import { ReferencePanel } from './components/reference-panel.js'
-import { getShips, resetCatalog } from './tdc-store.js'
+import { setLocale } from '../core/i18n.js'
+import { ReferencePanel } from './reference-panel.js'
+import { getShips, resetCatalog } from '../core/tdc-store.js'
 
 const tick = () => new Promise<void>(r => setTimeout(r))
 

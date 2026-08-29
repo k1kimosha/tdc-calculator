@@ -1,3 +1,7 @@
+/**
+ * Справочник: CRUD по кораблям/сценариям/заметкам/калькуляторам,
+ * методы идентификации и импорт/экспорт/сброс каталога.
+ */
 import { css, html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import {
@@ -9,9 +13,9 @@ import {
   type Scenario,
   type ScenarioMode,
   type ShipClass,
-} from '../tdc-data.js'
-import { I18nElement } from '../i18n.js'
-import { formStyles, segmentStyles, tableStyles } from '../shared-styles.js'
+} from '../core/tdc-data.js'
+import { I18nElement } from '../core/i18n.js'
+import { formStyles, segmentStyles, tableStyles } from '../styles/shared-styles.js'
 import {
   NOTE_CATEGORIES,
   catalogFileName,
@@ -33,7 +37,8 @@ import {
   upsertScenario,
   upsertShip,
   type Note,
-} from '../tdc-store.js'
+} from '../core/tdc-store.js'
+import { downloadText, readFileAsText } from '../utils/download.js'
 import './calc-editor.js'
 
 type EditingState =
@@ -273,36 +278,24 @@ export class ReferencePanel extends I18nElement {
   }
 
   private _onExport() {
-    const blob = new Blob([exportCatalogJson()], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = catalogFileName()
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
+    downloadText(exportCatalogJson(), catalogFileName(), 'application/json')
   }
 
   private _onImportClick() {
     this.shadowRoot?.querySelector<HTMLInputElement>('input[type="file"]')?.click()
   }
 
-  private _onImportFile(e: Event) {
+  private async _onImportFile(e: Event) {
     const input = e.target as HTMLInputElement
     const file = input.files?.[0]
     input.value = ''
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = importCatalogJson(String(reader.result ?? ''))
-      if (result.ok) this._showToast(this.t('reference.import.ok'))
-      else
-        this._showToast(
-          this.t(result.error === 'json' ? 'reference.import.errJson' : 'reference.import.errShape'),
-        )
-    }
-    reader.readAsText(file)
+    const result = importCatalogJson(await readFileAsText(file))
+    if (result.ok) this._showToast(this.t('reference.import.ok'))
+    else
+      this._showToast(
+        this.t(result.error === 'json' ? 'reference.import.errJson' : 'reference.import.errShape'),
+      )
   }
 
   private _onReset() {

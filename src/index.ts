@@ -1,1 +1,1 @@
-import './tdc-app.js'
+import './app/tdc-app.js'

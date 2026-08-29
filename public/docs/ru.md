@@ -78,7 +78,7 @@ AOB = arcsin(Lв ÷ L)
 ```
 
 ```js
-asin(v/l)*180/pi
+asin(visRizki/l)*180/pi
 ```
 
 **Угол упреждения (метод О’Кейна):**

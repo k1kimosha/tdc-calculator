@@ -1,3 +1,8 @@
+/**
+ * Редактор калькулятора: правка заголовка, контролов (number/select/ships/
+ * liveTable) и формул; эмитит события calc-save / calc-cancel (используется
+ * в Справочнике).
+ */
 import { css, html, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import {
@@ -6,11 +11,11 @@ import {
   type CalcLiveTableControl,
   type CalcSelectControl,
   type CalculatorConfig,
-} from '../tdc-data.js'
-import { newId } from '../tdc-store.js'
-import { validateFormula } from '../formula-engine.js'
-import { I18nElement } from '../i18n.js'
-import { formStyles } from '../shared-styles.js'
+} from '../core/tdc-data.js'
+import { newId } from '../core/tdc-store.js'
+import { validateFormula } from '../core/formula-engine.js'
+import { I18nElement } from '../core/i18n.js'
+import { formStyles } from '../styles/shared-styles.js'
 
 type Locale = 'ru' | 'en'
 

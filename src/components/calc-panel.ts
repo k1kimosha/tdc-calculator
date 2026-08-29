@@ -1,3 +1,7 @@
+/**
+ * Живой калькулятор: рендерит контролы конфигурации, пересчитывает формулы
+ * по мере ввода, фиксирует выстрелы в журнал похода (см. snapshot-utils).
+ */
 import { css, html, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import {
@@ -8,14 +12,14 @@ import {
   type CalcControl,
   type CalcFormula,
   type CalculatorConfig,
-} from '../tdc-data.js'
-import { getShips, getCalcs } from '../tdc-store.js'
-import { getActivePatrol, recordShot } from '../tdc-log.js'
-import { getCalcInputs, setCalcInput } from '../calc-inputs.js'
-import { buildCalcSnapshots } from '../snapshot-utils.js'
-import { evaluateFormula } from '../formula-engine.js'
-import { I18nElement } from '../i18n.js'
-import { formStyles } from '../shared-styles.js'
+} from '../core/tdc-data.js'
+import { getShips, getCalcs } from '../core/tdc-store.js'
+import { getActivePatrol, recordShot } from '../core/tdc-log.js'
+import { getCalcInputs, setCalcInput } from '../core/calc-inputs.js'
+import { buildCalcSnapshots } from '../core/snapshot-utils.js'
+import { evaluateFormula } from '../core/formula-engine.js'
+import { I18nElement } from '../core/i18n.js'
+import { formStyles } from '../styles/shared-styles.js'
 
 interface CalcResult {
   formula: CalcFormula
@@ -125,7 +129,7 @@ export class CalcPanel extends I18nElement {
         error = e instanceof Error ? e.message : String(e)
       }
       out.push({ formula: f, value, error })
-      if (value !== null) feed[f.id] = value
+      if (value !== null) feed[f.id.toLowerCase()] = value
     }
     return out
   }

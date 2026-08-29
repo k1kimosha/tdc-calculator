@@ -1,3 +1,8 @@
+/**
+ * Снимки выстрела: формирует ShotSnapshot (блоки всех калькуляторов) из
+ * текущего ввода, вычисляя результаты через formula-engine и сохраняя
+ * формулы/переменные/значения для журнала и PDF-отчёта.
+ */
 import { KNOTS_TO_MS, formatNumber, locText, shipClassName, type CalculatorConfig } from './tdc-data.js'
 import { getShips } from './tdc-store.js'
 import { type ShotSnapshotCalc } from './tdc-log.js'
@@ -10,6 +15,10 @@ interface BuiltInput {
   value: string
 }
 
+/**
+ * Построить снимок всех калькуляторов для фиксации выстрела:
+ * для каждого калькулятора считаются формулы по введённым значениям.
+ */
 export function buildCalcSnapshots(
   calcs: CalculatorConfig[],
   inputs: Record<string, Record<string, string>>,
@@ -33,7 +42,7 @@ export function buildCalcSnapshots(
         const r = evaluateFormula(f.expr, ctx)
         if (typeof r === 'number' && Number.isFinite(r)) {
           result.value = formatNumber(r, 2, locale)
-          feed[f.id] = r
+          feed[f.id.toLowerCase()] = r
         }
       } catch {
         result.value = '—'

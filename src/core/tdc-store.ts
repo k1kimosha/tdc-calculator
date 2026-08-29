@@ -1,3 +1,9 @@
+/**
+ * Каталог калькуляторов (localStorage).
+ * Хранит корабли, сценарии, калькуляторы и заметки; при чтении валидирует
+ * и нормализует структуру (подстраивается под старые версии данных),
+ * рассылает подписчикам уведомления об изменениях.
+ */
 import {
   DEFAULT_CALC_CONFIGS,
   DEFAULT_SCENARIOS,
@@ -14,7 +20,7 @@ import {
 } from './tdc-data.js'
 
 export const STORAGE_KEY = 'tdc-catalog'
-export const CATALOG_VERSION = 3
+export const CATALOG_VERSION = 4
 
 export const NOTE_CATEGORIES = ['tdc', 'identification', 'general'] as const
 export type NoteCategory = (typeof NOTE_CATEGORIES)[number]
@@ -74,9 +80,48 @@ export function readCatalog(): TdcCatalog {
   return catalog
 }
 
+function migrateCalcFormulas(value: unknown): unknown {
+  if (!Array.isArray(value)) return value
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue
+    const rec = item as Record<string, unknown>
+    if (rec.id !== 'aob' || !Array.isArray(rec.formulas)) continue
+    const list = rec.formulas as Array<Record<string, unknown> | null | undefined>
+    const ids = new Set<string>()
+    for (const f of list) {
+      const fr = f as Record<string, unknown> | null | undefined
+      if (fr && typeof fr.id === 'string') ids.add(fr.id)
+    }
+    const seen = new Set<string>()
+    let broken = false
+    for (const f of list) {
+      const fr = f as Record<string, unknown> | null | undefined
+      if (!fr || typeof fr.id !== 'string' || typeof fr.expr !== 'string') continue
+      if (/(^|[^A-Za-z0-9_])v([^A-Za-z0-9_]|$)/.test(fr.expr)) {
+        broken = true
+        break
+      }
+      const re = /[A-Za-z_][A-Za-z0-9_]*/g
+      let m: RegExpExecArray | null
+      while ((m = re.exec(fr.expr)) !== null) {
+        const dep = m[0]
+        if (dep !== fr.id && ids.has(dep) && !seen.has(dep)) {
+          broken = true
+          break
+        }
+      }
+      if (broken) break
+      seen.add(fr.id)
+    }
+    if (broken) rec.formulas = clone(defaultFormulasFor('aob'))
+  }
+  return value
+}
+
 function normalizeCatalogShape(value: unknown): TdcCatalog | null {
   if (!value || typeof value !== 'object') return null
   const record = value as Record<string, unknown>
+  record.calcs = migrateCalcFormulas(record.calcs)
   const ships = Array.isArray(record.ships)
     ? record.ships.map(normalizeShip).filter((s): s is ShipClass => s !== null)
     : null

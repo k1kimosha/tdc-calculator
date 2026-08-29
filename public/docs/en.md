@@ -78,7 +78,7 @@ AOB = arcsin(Lv ÷ L)
 ```
 
 ```js
-asin(v/l)*180/pi
+asin(visRizki/l)*180/pi
 ```
 
 **Lead angle (O’Kane method):**

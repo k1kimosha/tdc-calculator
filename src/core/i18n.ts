@@ -1,12 +1,17 @@
+/**
+ * Интернационализация: текущая локаль, подписка на смену языка,
+ * перевод по плоским ключам с подстановкой параметров,
+ * базовый Web-компонент I18nElement (Lit) с локализованным состоянием.
+ */
 import { LitElement } from 'lit'
 import { state } from 'lit/decorators.js'
 import {
   DEFAULT_LOCALE,
   isSupportedLocale,
   messages,
-} from './locales/index.js'
+} from '../locales/index.js'
 
-export { DEFAULT_LOCALE, LOCALE_OPTIONS } from './locales/index.js'
+export { DEFAULT_LOCALE, LOCALE_OPTIONS } from '../locales/index.js'
 
 export type Locale = string
 

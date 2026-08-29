@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setLocale } from './i18n.js'
-import { TdcLogPanel } from './components/tdc-log-panel.js'
+import { setLocale } from '../core/i18n.js'
+import { TdcLogPanel } from './tdc-log-panel.js'
 import {
   deletePatrol,
   endPatrol,
@@ -10,7 +10,7 @@ import {
   resetLog,
   startPatrol,
   type ShotSnapshot,
-} from './tdc-log.js'
+} from '../core/tdc-log.js'
 
 const tick = () => new Promise<void>(r => setTimeout(r))
 
