@@ -11,6 +11,7 @@ export const en: Messages = {
       aob: { label: 'AOB', hint: 'angle on the bow' },
       okane: { label: 'O’Kane', hint: 'lead angle' },
       reference: { label: 'Reference', hint: 'ships & settings' },
+      docs: { label: 'Docs', hint: 'how to use' },
     },
     lang: {
       label: 'Interface language',
@@ -323,5 +324,10 @@ export const en: Messages = {
   },
   calcs: {
     invalid: 'Formula error: {error}',
+  },
+  docs: {
+    versionLabel: 'Documentation · version',
+    loading: 'Loading documentation…',
+    loadError: 'Failed to load the documentation.',
   },
 }
