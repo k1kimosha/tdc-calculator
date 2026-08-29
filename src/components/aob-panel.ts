@@ -1,14 +1,16 @@
-import { LitElement, css, html } from 'lit'
+import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import {
   WARSHIPS,
   aobFromVisibleLength,
   formatNumber,
   rizkiFromVisibleMeters,
+  shipClassName,
   visibleLengthFromAob,
   visibleMetersFromRizki,
   type ShipClass,
 } from '../tdc-data.js'
+import { I18nElement } from '../i18n.js'
 import { formStyles, segmentStyles, tableStyles } from '../shared-styles.js'
 
 function toNumber(value: string): number {
@@ -21,7 +23,7 @@ function toNumber(value: string): number {
 const AOB_TABLE = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 
 @customElement('tdc-aob-panel')
-export class AobPanel extends LitElement {
+export class AobPanel extends I18nElement {
   @state() private shipId = 'flavik'
   @state() private lengthText = '62'
   @state() private mode: 'rizki' | 'aob' = 'rizki'
@@ -51,6 +53,7 @@ export class AobPanel extends LitElement {
     const isRizkiMode = this.mode === 'rizki'
     const rizki = toNumber(this.rizkiText)
     const aobIn = toNumber(this.aobText)
+    const { locale } = this
 
     let visible: number | null = null
     let aobOut: number | null = null
@@ -66,38 +69,57 @@ export class AobPanel extends LitElement {
       }
     }
 
-    const sideLabel = this.side === 'starboard' ? 'П' : 'Л'
-    const aobDisplay = aobOut !== null ? `${formatNumber(aobOut, 1)}° ${sideLabel}` : '—'
+    const sideLabel =
+      locale === 'ru'
+        ? this.side === 'starboard'
+          ? 'П'
+          : 'Л'
+        : this.side === 'starboard'
+          ? 'S'
+          : 'P'
+    const aobDisplay = aobOut !== null ? `${formatNumber(aobOut, 1, locale)}° ${sideLabel}` : '—'
 
     const formula =
       isRizkiMode && (aobOut !== null || visible !== null)
-        ? `Видимая длина: ${formatNumber(rizki)} рис. × ${formatNumber(D)} м ÷ 1000 = ${formatNumber(visible ?? 0)} м → КУЦ = arcsin(${formatNumber(visible ?? 0, 1)} ÷ ${formatNumber(L)}) = ${formatNumber(aobOut ?? 0, 1)}°`
+        ? this.t('aob.formula.byVisible', {
+            r: formatNumber(rizki, 2, locale),
+            d: formatNumber(D, 0, locale),
+            v: formatNumber(visible ?? 0, 1, locale),
+            l: formatNumber(L, 2, locale),
+            a: formatNumber(aobOut ?? 0, 1, locale),
+          })
         : !isRizkiMode && (rizkiOut !== null || visible !== null)
-          ? `КУЦ ${formatNumber(aobIn, 1)}° → длина = ${formatNumber(L)} м × sin(${formatNumber(aobIn, 1)}°) = ${formatNumber(visible ?? 0, 1)} м → ${formatNumber(rizkiOut ?? 0, 1)} рис. при D = ${formatNumber(D)} м`
-          : 'Укажите видимую длину цели и дистанцию'
+          ? this.t('aob.formula.byAob', {
+              a: formatNumber(aobIn, 1, locale),
+              l: formatNumber(L, 2, locale),
+              v: formatNumber(visible ?? 0, 1, locale),
+              ri: formatNumber(rizkiOut ?? 0, 1, locale),
+              d: formatNumber(D, 0, locale),
+            })
+          : this.t('aob.formula.empty')
 
     return html`
       <section class="panel">
-        <h2 class="panel-title">Курсовой угол цели (КУЦ / AOB)</h2>
+        <h2 class="panel-title">${this.t('aob.title')}</h2>
 
         <div class="form-grid">
           <div class="field">
-            <label class="field-label" for="ship">Тип цели</label>
+            <label class="field-label" for="ship">${this.t('aob.ship.label')}</label>
             <select id="ship" @change=${this._onShipChange}>
-              <option value="" ?selected=${this.shipId === ''}>Ручной ввод</option>
+              <option value="" ?selected=${this.shipId === ''}>${this.t('aob.ship.manual')}</option>
               ${WARSHIPS.map(
                 s => html`
-                  <option value=${s.id} ?selected=${this.shipId === s.id}>${s.nameRu}</option>
+                  <option value=${s.id} ?selected=${this.shipId === s.id}>${shipClassName(s, locale)}</option>
                 `,
               )}
             </select>
             ${this.selectedShip
-              ? html`<span class="field-hint">${this.selectedShip.nameEn} · длина ${this.selectedShip.length} м</span>`
-              : html`<span class="field-hint">Введите длину цели вручную</span>`}
+              ? html`<span class="field-hint">${this.t('aob.ship.hint', { en: this.selectedShip.nameEn, len: this.selectedShip.length })}</span>`
+              : html`<span class="field-hint">${this.t('aob.ship.manualHint')}</span>`}
           </div>
 
           <div class="field">
-            <label class="field-label" for="length">Длина цели, м</label>
+            <label class="field-label" for="length">${this.t('aob.length.label')}</label>
             <input
               id="length"
               type="number"
@@ -106,11 +128,11 @@ export class AobPanel extends LitElement {
               .value=${this.lengthText}
               @input=${(e: Event) => (this.lengthText = (e.target as HTMLInputElement).value)}
             />
-            <span class="field-hint">По справочнику · можно править</span>
+            <span class="field-hint">${this.t('aob.length.hint')}</span>
           </div>
 
           <div class="field">
-            <label class="field-label" for="dist">Дистанция до цели, м</label>
+            <label class="field-label" for="dist">${this.t('aob.dist.label')}</label>
             <input
               id="dist"
               type="number"
@@ -119,12 +141,12 @@ export class AobPanel extends LitElement {
               .value=${this.distText}
               @input=${(e: Event) => (this.distText = (e.target as HTMLInputElement).value)}
             />
-            <span class="field-hint">Например, с вкладки «Дистанция»</span>
+            <span class="field-hint">${this.t('aob.dist.hint')}</span>
           </div>
 
           <div class="field">
-            <span class="field-label">Борт цели</span>
-            <div class="segment" role="radiogroup" aria-label="Борт">
+            <span class="field-label">${this.t('aob.side.label')}</span>
+            <div class="segment" role="radiogroup" aria-label=${this.t('aob.side.aria')}>
               <label>
                 <input
                   type="radio"
@@ -133,7 +155,7 @@ export class AobPanel extends LitElement {
                   ?checked=${this.side === 'port'}
                   @change=${(e: Event) => (this.side = (e.target as HTMLInputElement).value as 'port')}
                 />
-                <span>Левый</span>
+                <span>${this.t('aob.side.port')}</span>
               </label>
               <label>
                 <input
@@ -143,15 +165,15 @@ export class AobPanel extends LitElement {
                   ?checked=${this.side === 'starboard'}
                   @change=${(e: Event) => (this.side = (e.target as HTMLInputElement).value as 'starboard')}
                 />
-                <span>Правый</span>
+                <span>${this.t('aob.side.starboard')}</span>
               </label>
             </div>
           </div>
         </div>
 
         <div class="field" style="margin-top:16px">
-          <span class="field-label">Рассчитать</span>
-          <div class="segment" role="radiogroup" aria-label="Режим расчёта">
+          <span class="field-label">${this.t('aob.mode.label')}</span>
+          <div class="segment" role="radiogroup" aria-label=${this.t('aob.mode.aria')}>
             <label>
               <input
                 type="radio"
@@ -160,7 +182,7 @@ export class AobPanel extends LitElement {
                 ?checked=${this.mode === 'rizki'}
                 @change=${(e: Event) => (this.mode = (e.target as HTMLInputElement).value as 'rizki')}
               />
-              <span>КУЦ по видимой длине</span>
+              <span>${this.t('aob.mode.byVisible')}</span>
             </label>
             <label>
               <input
@@ -170,7 +192,7 @@ export class AobPanel extends LitElement {
                 ?checked=${this.mode === 'aob'}
                 @change=${(e: Event) => (this.mode = (e.target as HTMLInputElement).value as 'aob')}
               />
-              <span>Риски по КУЦ</span>
+              <span>${this.t('aob.mode.byAob')}</span>
             </label>
           </div>
         </div>
@@ -178,7 +200,7 @@ export class AobPanel extends LitElement {
         <div class="form-grid" style="margin-top:14px">
           <div class="field">
             <label class="field-label" for="input">
-              ${isRizkiMode ? 'Видимая длина цели, риски' : 'Курсовой угол, °'}
+              ${this.t(isRizkiMode ? 'aob.input.byVisible' : 'aob.input.byAob')}
             </label>
             <input
               id="input"
@@ -196,29 +218,29 @@ export class AobPanel extends LitElement {
         </div>
 
         <div class="result">
-          <div class="result-caption">${isRizkiMode ? 'Курсовой угол цели (КУЦ)' : 'Видимая длина в рисках'}</div>
-          <div class="result-value">${isRizkiMode ? aobDisplay : rizkiOut !== null ? formatNumber(rizkiOut, 1) : '—'}</div>
+          <div class="result-caption">${this.t(isRizkiMode ? 'aob.result.byVisible' : 'aob.result.byAob')}</div>
+          <div class="result-value">${isRizkiMode ? aobDisplay : rizkiOut !== null ? formatNumber(rizkiOut, 1, locale) : '—'}</div>
           <div class="result-formula">${formula}</div>
         </div>
 
         <div class="kv">
           <div class="kv-row">
-            <span class="kv-k">Видимая длина ${isRizkiMode ? 'по введённым рискам' : 'при этом КУЦ'}</span>
-            <span class="kv-v">${visible !== null ? `${formatNumber(visible, 1)} м` : '—'}</span>
+            <span class="kv-k">${this.t(isRizkiMode ? 'aob.kv.byVisible' : 'aob.kv.byAob')}</span>
+            <span class="kv-v">${visible !== null ? `${formatNumber(visible, 1, locale)} ${this.t('units.meterShort')}` : '—'}</span>
           </div>
         </div>
       </section>
 
       <section class="panel">
-        <h2 class="panel-title">Шпаргалка: КУЦ → риски</h2>
-        <p class="hint">Для этой цели и дистанции · нажмите на строку, чтобы подставить КУЦ</p>
+        <h2 class="panel-title">${this.t('aob.cheat.title')}</h2>
+        <p class="hint">${this.t('aob.cheat.hint')}</p>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>КУЦ, °</th>
-                <th class="num">Видимая длина, м</th>
-                <th class="num">Риски</th>
+                <th>${this.t('aob.cheat.colAob')}</th>
+                <th class="num">${this.t('aob.cheat.colVisible')}</th>
+                <th class="num">${this.t('aob.cheat.colTicks')}</th>
               </tr>
             </thead>
             <tbody>
@@ -231,8 +253,8 @@ export class AobPanel extends LitElement {
                 return html`
                   <tr class="${active ? 'selected' : ''}" @click=${() => this._pickAob(a)}>
                     <td>${a}°</td>
-                    <td class="num">${vis !== null ? formatNumber(vis, 1) : '—'}</td>
-                    <td class="num">${r !== null ? formatNumber(r, 1) : '—'}</td>
+                    <td class="num">${vis !== null ? formatNumber(vis, 1, locale) : '—'}</td>
+                    <td class="num">${r !== null ? formatNumber(r, 1, locale) : '—'}</td>
                   </tr>
                 `
               })}

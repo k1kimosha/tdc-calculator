@@ -1,4 +1,4 @@
-import { LitElement, css, html } from 'lit'
+import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import {
   CHEAT_SHEET_RIZKI,
@@ -7,9 +7,11 @@ import {
   distanceMeters,
   formatNumber,
   rizkiForDistance,
+  shipClassName,
   type Magnification,
   type ShipClass,
 } from '../tdc-data.js'
+import { I18nElement } from '../i18n.js'
 import { formStyles, segmentStyles, tableStyles } from '../shared-styles.js'
 
 function toNumber(value: string): number {
@@ -20,7 +22,7 @@ function toNumber(value: string): number {
 }
 
 @customElement('tdc-distance-panel')
-export class DistancePanel extends LitElement {
+export class DistancePanel extends I18nElement {
   @state() private shipId = 'flavik'
   @state() private landmark: 'mast' | 'funnel' = 'mast'
   @state() private magId = 'approach'
@@ -67,43 +69,56 @@ export class DistancePanel extends LitElement {
     const isRizkiMode = this.mode === 'rizki'
     const rizki = toNumber(this.rizkiText)
     const dist = toNumber(this.distText)
+    const { locale } = this
 
     const resultDistance = h > 0 && rizki > 0 ? distanceMeters(h, c, rizki) : null
     const resultRizki = h > 0 && dist > 0 ? rizkiForDistance(h, c, dist) : null
 
     const distFormula =
       resultDistance !== null
-        ? `${formatNumber(h)} м × ${formatNumber(c)} ÷ ${formatNumber(rizki)} = ${formatNumber(resultDistance, 0)} м`
-        : 'Укажите высоту цели и количество рисок'
+        ? this.t('distance.formula.byTicks', {
+            h: formatNumber(h, 2, locale),
+            k: formatNumber(c, 2, locale),
+            r: formatNumber(rizki, 2, locale),
+            d: formatNumber(resultDistance, 0, locale),
+          })
+        : this.t('distance.formula.emptyTicks')
 
     const rizkiFormula =
       resultRizki !== null
-        ? `${formatNumber(h)} м × ${formatNumber(c)} ÷ ${formatNumber(dist)} м = ${formatNumber(resultRizki)}`
-        : 'Укажите высоту цели и дистанцию'
+        ? this.t('distance.formula.byDistance', {
+            h: formatNumber(h, 2, locale),
+            k: formatNumber(c, 2, locale),
+            d: formatNumber(dist, 0, locale),
+            r: formatNumber(resultRizki, 2, locale),
+          })
+        : this.t('distance.formula.emptyDist')
+
+    const unitM = this.t('units.meterShort')
 
     return html`
       <section class="panel">
-        <h2 class="panel-title">Дистанция до цели</h2>
+        <h2 class="panel-title">${this.t('distance.title')}</h2>
 
         <div class="form-grid">
           <div class="field">
-            <label class="field-label" for="ship">Тип цели</label>
+            <label class="field-label" for="ship">${this.t('distance.ship.label')}</label>
             <select id="ship" @change=${this._onShipChange}>
-              <option value="" ?selected=${this.shipId === ''}>Ручной ввод</option>
+              <option value="" ?selected=${this.shipId === ''}>${this.t('distance.ship.manual')}</option>
               ${WARSHIPS.map(
                 s => html`
-                  <option value=${s.id} ?selected=${this.shipId === s.id}>${s.nameRu}</option>
+                  <option value=${s.id} ?selected=${this.shipId === s.id}>${shipClassName(s, locale)}</option>
                 `,
               )}
             </select>
             ${this.selectedShip
-              ? html`<span class="field-hint">${this.selectedShip.nameEn}</span>`
-              : html`<span class="field-hint">Введите высоту цели вручную</span>`}
+              ? html`<span class="field-hint">${locale === 'ru' ? this.selectedShip.nameEn : this.selectedShip.nameRu}</span>`
+              : html`<span class="field-hint">${this.t('distance.ship.manualHint')}</span>`}
           </div>
 
           <div class="field">
-            <span class="field-label">Ориентир для замера</span>
-            <div class="segment" role="radiogroup" aria-label="Ориентир">
+            <span class="field-label">${this.t('distance.point.label')}</span>
+            <div class="segment" role="radiogroup" aria-label=${this.t('distance.point.aria')}>
               <label>
                 <input
                   type="radio"
@@ -112,7 +127,7 @@ export class DistancePanel extends LitElement {
                   ?checked=${this.landmark === 'mast'}
                   @change=${this._onLandmarkChange}
                 />
-                <span>Мачта</span>
+                <span>${this.t('distance.point.mast')}</span>
               </label>
               <label>
                 <input
@@ -122,13 +137,13 @@ export class DistancePanel extends LitElement {
                   ?checked=${this.landmark === 'funnel'}
                   @change=${this._onLandmarkChange}
                 />
-                <span>Труба</span>
+                <span>${this.t('distance.point.funnel')}</span>
               </label>
             </div>
           </div>
 
           <div class="field">
-            <label class="field-label" for="height">Высота цели, м</label>
+            <label class="field-label" for="height">${this.t('distance.height.label')}</label>
             <input
               id="height"
               type="number"
@@ -137,25 +152,25 @@ export class DistancePanel extends LitElement {
               .value=${this.heightText}
               @input=${(e: Event) => (this.heightText = (e.target as HTMLInputElement).value)}
             />
-            <span class="field-hint">По справочнику · можно править</span>
+            <span class="field-hint">${this.t('distance.height.hint')}</span>
           </div>
 
           <div class="field">
-            <label class="field-label" for="mag">Кратность прицела</label>
+            <label class="field-label" for="mag">${this.t('distance.mag.label')}</label>
             <select id="mag" @change=${(e: Event) => (this.magId = (e.target as HTMLSelectElement).value)}>
               ${MAGNIFICATIONS.map(
                 m => html`
-                  <option value=${m.id} ?selected=${this.magId === m.id}>${m.label} — ${m.detail}</option>
+                  <option value=${m.id} ?selected=${this.magId === m.id}>${m.label[locale]} — ${m.detail[locale]}</option>
                 `,
               )}
             </select>
-            <span class="field-hint">Коэффициент K = ${formatNumber(c)}</span>
+            <span class="field-hint">${this.t('distance.mag.hint', { k: formatNumber(c, 2, locale) })}</span>
           </div>
         </div>
 
         <div class="field" style="margin-top:16px">
-          <span class="field-label">Что рассчитать</span>
-          <div class="segment" role="radiogroup" aria-label="Режим расчёта">
+          <span class="field-label">${this.t('distance.mode.label')}</span>
+          <div class="segment" role="radiogroup" aria-label=${this.t('distance.mode.aria')}>
             <label>
               <input
                 type="radio"
@@ -164,7 +179,7 @@ export class DistancePanel extends LitElement {
                 ?checked=${this.mode === 'rizki'}
                 @change=${(e: Event) => (this.mode = (e.target as HTMLInputElement).value as 'rizki')}
               />
-              <span>Дистанцию по рискам</span>
+              <span>${this.t('distance.mode.byTicks')}</span>
             </label>
             <label>
               <input
@@ -174,14 +189,14 @@ export class DistancePanel extends LitElement {
                 ?checked=${this.mode === 'distance'}
                 @change=${(e: Event) => (this.mode = (e.target as HTMLInputElement).value as 'distance')}
               />
-              <span>Риски по дистанции</span>
+              <span>${this.t('distance.mode.byDistance')}</span>
             </label>
           </div>
         </div>
 
         <div class="form-grid" style="margin-top:14px">
           <div class="field">
-            <label class="field-label" for="rizki">${isRizkiMode ? 'Риски' : 'Введите дистанцию, м'}</label>
+            <label class="field-label" for="rizki">${this.t(isRizkiMode ? 'distance.input.byTicks' : 'distance.input.byDistance')}</label>
             <input
               id="rizki"
               type="number"
@@ -198,14 +213,14 @@ export class DistancePanel extends LitElement {
         </div>
 
         <div class="result">
-          <div class="result-caption">${isRizkiMode ? 'Дистанция до цели' : 'Риски (рисок)'}</div>
+          <div class="result-caption">${this.t(isRizkiMode ? 'distance.result.byTicks' : 'distance.result.byDistance')}</div>
           <div class="result-value">
             ${isRizkiMode
               ? resultDistance !== null
-                ? `${formatNumber(resultDistance, 0)} м`
+                ? `${formatNumber(resultDistance, 0, locale)} ${unitM}`
                 : '—'
               : resultRizki !== null
-                ? formatNumber(resultRizki)
+                ? formatNumber(resultRizki, 2, locale)
                 : '—'}
           </div>
           <div class="result-formula">${isRizkiMode ? distFormula : rizkiFormula}</div>
@@ -213,14 +228,14 @@ export class DistancePanel extends LitElement {
       </section>
 
       <section class="panel">
-        <h2 class="panel-title">Шпаргалка: риски → дистанция</h2>
-        <p class="hint">Текущая цель и кратность · нажмите на строку, чтобы подставить значение риски</p>
+        <h2 class="panel-title">${this.t('distance.cheat.title')}</h2>
+        <p class="hint">${this.t('distance.cheat.hint')}</p>
         <div class="table-wrap">
           <table class="cheat">
             <thead>
               <tr>
-                <th>Риски</th>
-                <th class="num">Дистанция, м</th>
+                <th>${this.t('distance.cheat.colTicks')}</th>
+                <th class="num">${this.t('distance.cheat.colDistance')}</th>
               </tr>
             </thead>
             <tbody>
@@ -231,8 +246,8 @@ export class DistancePanel extends LitElement {
                   : resultRizki !== null && Math.abs(r - resultRizki) < 0.005
                 return html`
                   <tr class="${isActive ? 'selected' : ''}" @click=${() => this._pickRizki(r)}>
-                    <td>${formatNumber(r)}</td>
-                    <td class="num">${d !== null ? formatNumber(d, 0) : '—'}</td>
+                    <td>${formatNumber(r, 2, locale)}</td>
+                    <td class="num">${d !== null ? formatNumber(d, 0, locale) : '—'}</td>
                   </tr>
                 `
               })}

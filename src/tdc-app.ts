@@ -1,23 +1,24 @@
-import { LitElement, css, html } from 'lit'
+import { css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import './components/distance-panel.js'
 import './components/speed-panel.js'
 import './components/aob-panel.js'
 import './components/okane-panel.js'
 import './components/reference-panel.js'
+import { I18nElement, setLocale, type Locale } from './i18n.js'
 
 type Tab = 'distance' | 'speed' | 'aob' | 'okane' | 'reference'
 
-const TABS: { id: Tab; label: string; hint: string }[] = [
-  { id: 'distance', label: 'Дистанция', hint: 'риски ↔ метры' },
-  { id: 'speed', label: 'Скорость', hint: 'длина ÷ время' },
-  { id: 'aob', label: 'КУЦ', hint: 'курсовой угол' },
-  { id: 'okane', label: 'О’Кейн', hint: 'упреждение' },
-  { id: 'reference', label: 'Справочник', hint: 'корабли и уставки' },
+const TABS: { id: Tab; labelKey: string; hintKey: string }[] = [
+  { id: 'distance', labelKey: 'app.tabs.distance.label', hintKey: 'app.tabs.distance.hint' },
+  { id: 'speed', labelKey: 'app.tabs.speed.label', hintKey: 'app.tabs.speed.hint' },
+  { id: 'aob', labelKey: 'app.tabs.aob.label', hintKey: 'app.tabs.aob.hint' },
+  { id: 'okane', labelKey: 'app.tabs.okane.label', hintKey: 'app.tabs.okane.hint' },
+  { id: 'reference', labelKey: 'app.tabs.reference.label', hintKey: 'app.tabs.reference.hint' },
 ]
 
 @customElement('tdc-app')
-export class TdcApp extends LitElement {
+export class TdcApp extends I18nElement {
   @state() private tab: Tab = 'distance'
 
   static styles = css`
@@ -53,6 +54,11 @@ export class TdcApp extends LitElement {
       margin-bottom: 22px;
     }
 
+    .masthead-titles {
+      flex: 1;
+      min-width: 0;
+    }
+
     .brand-mark {
       width: 46px;
       height: 46px;
@@ -72,6 +78,47 @@ export class TdcApp extends LitElement {
       margin: 2px 0 0;
       font-size: 13px;
       color: var(--text-dim);
+    }
+
+    .lang {
+      display: inline-flex;
+      flex: none;
+      align-self: flex-start;
+      margin-top: 4px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .lang-btn {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--text-dim);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 6px 12px;
+      cursor: pointer;
+      border-right: 1px solid var(--border);
+      transition:
+        background 0.15s,
+        color 0.15s;
+    }
+
+    .lang-btn:last-child {
+      border-right: 0;
+    }
+
+    .lang-btn:hover {
+      color: var(--text);
+    }
+
+    .lang-btn.active {
+      background: var(--accent-dim);
+      color: var(--text);
+      box-shadow: inset 0 -2px 0 var(--accent);
     }
 
     .tabs {
@@ -161,13 +208,27 @@ export class TdcApp extends LitElement {
           <path d="M24 24 V6" stroke="currentColor" stroke-linecap="round" />
           <circle cx="24" cy="5" r="1.8" fill="currentColor" />
         </svg>
-        <div>
-          <h1>TDC калькулятор</h1>
-          <p class="subtitle">Расчёт уставок торпедного компьютера: дистанция и скорость цели</p>
+        <div class="masthead-titles">
+          <h1>${this.t('app.title')}</h1>
+          <p class="subtitle">${this.t('app.subtitle')}</p>
+        </div>
+        <div class="lang" role="group" aria-label=${this.t('app.lang.label')}>
+          ${(['ru', 'en'] as Locale[]).map(
+            l => html`
+              <button
+                type="button"
+                class="lang-btn ${this.locale === l ? 'active' : ''}"
+                aria-pressed=${this.locale === l}
+                @click=${() => setLocale(l)}
+              >
+                ${this.t(`app.lang.${l}`)}
+              </button>
+            `,
+          )}
         </div>
       </header>
 
-      <nav class="tabs" role="tablist" aria-label="Разделы">
+      <nav class="tabs" role="tablist" aria-label=${this.t('app.tabs.aria')}>
         ${TABS.map(
           t => html`
             <button
@@ -177,8 +238,8 @@ export class TdcApp extends LitElement {
               class="tab ${this.tab === t.id ? 'active' : ''}"
               @click=${() => (this.tab = t.id)}
             >
-              <span class="t-label">${t.label}</span>
-              <span class="t-hint">${t.hint}</span>
+              <span class="t-label">${this.t(t.labelKey)}</span>
+              <span class="t-hint">${this.t(t.hintKey)}</span>
             </button>
           `,
         )}
@@ -197,8 +258,8 @@ export class TdcApp extends LitElement {
       </main>
 
       <footer class="footer">
-        <span>TDC калькулятор · расчёт уставок торпедного компьютера</span>
-        <span>Дистанция: H × K ÷ риски &nbsp;·&nbsp; Скорость: длина ÷ время × 1,94</span>
+        <span>${this.t('app.footer.left')}</span>
+        <span>${this.t('app.footer.right')}</span>
       </footer>
     `
   }
